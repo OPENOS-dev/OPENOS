@@ -81,7 +81,7 @@ OPENOS 由 `OPENOS-dev/OPENOS` 主仓库与若干子模块仓库组成，每个�
 
 | 项目 | 描述 | 状态 |
 | :--- | :--- | :--- |
-| [OPENOS-opt](https://github.com/OPENOS-dev/OPENOS-opt) | 统一包管理前端（pacman + apt 双后端） | planning |
+| [OPENOS-opt](https://github.com/OPENOS-dev/OPENOS-opt) | 统一包管理前端（pacman + apt 双后端） | active |
 | [OPENOS-pacman](https://github.com/OPENOS-dev/OPENOS-pacman) | pacman 包管理器 | active |
 | [OPENOS-apt](https://github.com/OPENOS-dev/OPENOS-apt) | apt 包管理器 | active |
 
