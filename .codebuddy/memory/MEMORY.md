@@ -44,6 +44,14 @@
 - 用户拒绝删除遗留文件（死代码保留不编译）。
 - 文档在 `DOCS/`；自研代码 GPL-2.0-only，LICENSES 归档上游许可。
 
+## CI 失败 Issue 工作流（2026-08-17 用户确立）
+- 子模块 CI 构建失败 → 上报 `logs/<组件>/<架构>.log` 到 `OPENOS-BUILD-BINPKG` 仓库（同名删旧填新）。
+- 主仓库 `failure-report.yml`（每小时 + 手动）扫描日志 → `gh issue create` 自动创建 `[CI-FAIL]` Issue。
+- **去重规则**：有 open 同标题 Issue 则跳过；只有 closed 的旧 Issue 则重新创建新 Issue。
+- **用户约定**：每次修完 bug 就**立即关闭**对应 Issue（`gh issue close`，不等待 CI 验证通过）——这样 failure-report 会因 closed 而生成新 Issue，永远反映最新失败状态，避免堆积陈旧失败。
+- commit message 引用 Issue 用跨仓库完整格式 `Fixes OPENOS-dev/OPENOS#N`（跨仓库不会自动关 issue，需手动 close）。
+- 汇总 Issue 逻辑：open 则更新内容；closed 则重建。
+
 ## 大项目子模块化（2026-08-16）
 - 大组件逐个 `git init` + 子模块 + 对应远程，**必须提交**。
 - 规则：**只提交解压目录，不提交 tarball**（kernel 子模块 `.gitignore` 排除 `*.tar*`）。解压树需无 >100M 单文件（GitHub 限制）才可直接提交。
