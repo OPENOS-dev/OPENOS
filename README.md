@@ -37,15 +37,64 @@ cd OPENOS
 
 ## 核心项目
 
+OPENOS 由 `OPENOS-dev/OPENOS` 主仓库与若干子模块仓库组成，每个子模块独立构建并产出 binpkg。
+
+### 主仓库
+
 | 项目 | 描述 | 状态 |
 | :--- | :--- | :--- |
-| [OPENOS](https://github.com/OPENOS-dev/OPENOS) | 操作系统核心（内核补丁 + 用户态工具） | active |
-| [OAK](https://github.com/OPENOS-dev/OAK) | 安全基座（LSM 模块 + 密钥管理） | active |
-| [OPENUI](https://github.com/OPENOS-dev/OPENUI) | Wayland 桌面环境 | active |
-| [OPT](https://github.com/OPENOS-dev/OPT) | 统一包管理前端 | planning |
-| [NUI-SPEC](https://github.com/OPENOS-dev/NUI-SPEC) | NUI 设计规范（NUI1/NUI2 已开源） | active |
-| [OPL](https://github.com/OPENOS-dev/OPL) | OPENOS-PROJECT-LICENSE | active |
-| [SNI](https://github.com/OPENOS-dev/SNI) | 软件命名空间隔离（内核模块） | planning |
+| [OPENOS](https://github.com/OPENOS-dev/OPENOS) | 操作系统主仓库（构建系统 + 子模块聚合） | active |
+
+### 内核
+
+| 项目 | 描述 | 状态 |
+| :--- | :--- | :--- |
+| [OPENOS-kernel](https://github.com/OPENOS-dev/OPENOS-kernel) | 内核（含 OAK 安全 LSM 补丁，多版本分层） | active |
+| [OPENOS-linux](https://github.com/OPENOS-dev/OPENOS-linux) | 上游 Linux 源码引用 | active |
+
+### 安全基座（OAK）
+
+| 项目 | 描述 | 状态 |
+| :--- | :--- | :--- |
+| [OPENOS-OAK](https://github.com/OPENOS-dev/OPENOS-OAK) | OAK 安全基座（加密/密钥管理 app） | active |
+| [OPENOS-liboak](https://github.com/OPENOS-dev/OPENOS-liboak) | OAK 核心库 | active |
+| [OPENOS-libopenrsa](https://github.com/OPENOS-dev/OPENOS-libopenrsa) | OPEN RSA 握手库 | active |
+| [OPENOS-libvmapp](https://github.com/OPENOS-dev/OPENOS-libvmapp) | 轻量隔离 (vmapp) 库 | active |
+| [OPENOS-oakctl](https://github.com/OPENOS-dev/OPENOS-oakctl) | OAK 密钥管理 CLI | active |
+| [OPENOS-oak-seal](https://github.com/OPENOS-dev/OPENOS-oak-seal) | OAK-Seal 硬盘加密绑定 | active |
+| [OPENOS-securityd](https://github.com/OPENOS-dev/OPENOS-securityd) | 安全守护进程 | active |
+| [OPENOS-uname](https://github.com/OPENOS-dev/OPENOS-uname) | 系统信息工具（含 OAK 标识） | active |
+
+### 桌面环境（OPENUI）
+
+| 项目 | 描述 | 状态 |
+| :--- | :--- | :--- |
+| [OPENOS-OPENUI-desktop](https://github.com/OPENOS-dev/OPENOS-OPENUI-desktop) | Wayland + wlroots + Qt/QML 桌面 | active |
+| [OPENOS-settings](https://github.com/OPENOS-dev/OPENOS-settings) | 系统设置 GUI | active |
+| [OPENOS-settingsd](https://github.com/OPENOS-dev/OPENOS-settingsd) | 设置守护进程 | active |
+| [OPENOS-calendar](https://github.com/OPENOS-dev/OPENOS-calendar) | 日历应用 | active |
+| [OPENOS-welcome](https://github.com/OPENOS-dev/OPENOS-welcome) | 欢迎/引导程序 | active |
+| [OPENOS-run](https://github.com/OPENOS-dev/OPENOS-run) | 应用启动器 | active |
+| [OPENOS-vmapp](https://github.com/OPENOS-dev/OPENOS-vmapp) | 隔离运行前端 | active |
+
+### 包管理（OPT）
+
+| 项目 | 描述 | 状态 |
+| :--- | :--- | :--- |
+| [OPENOS-opt](https://github.com/OPENOS-dev/OPENOS-opt) | 统一包管理前端（pacman + apt 双后端） | planning |
+| [OPENOS-pacman](https://github.com/OPENOS-dev/OPENOS-pacman) | pacman 包管理器 | active |
+| [OPENOS-apt](https://github.com/OPENOS-dev/OPENOS-apt) | apt 包管理器 | active |
+
+### 工具链与基础系统
+
+| 项目 | 描述 | 状态 |
+| :--- | :--- | :--- |
+| [OPENOS-gcc](https://github.com/OPENOS-dev/OPENOS-gcc) | GNU 编译器集合 | active |
+| [OPENOS-glibc](https://github.com/OPENOS-dev/OPENOS-glibc) | GNU C 库 | active |
+| [OPENOS-bash](https://github.com/OPENOS-dev/OPENOS-bash) | Bourne-Again Shell | active |
+| [OPENOS-coreutils](https://github.com/OPENOS-dev/OPENOS-coreutils) | 基础用户态工具 | active |
+| [OPENOS-util-linux](https://github.com/OPENOS-dev/OPENOS-util-linux) | 磁盘/分区/登录等工具 | active |
+| [OPENOS-systemd](https://github.com/OPENOS-dev/OPENOS-systemd) | init 系统与系统守护 | active |
 
 ---
 
