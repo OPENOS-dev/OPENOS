@@ -42,6 +42,7 @@ jobs:
       - name: 拉取各组件最新 binpkg
         run: |
           cd OPENOS_CORE/BUILD_SYSTEM
+          chmod +x fetch_binpkgs.sh build_image.sh
           ./fetch_binpkgs.sh --arch=${{ env.ARCH }} --kernel=${{ env.KERNEL_TIER }}
 
       - name: 组装镜像
