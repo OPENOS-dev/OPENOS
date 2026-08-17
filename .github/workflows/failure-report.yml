@@ -1,0 +1,85 @@
+name: OPENOS Failure Report
+
+# 聚合子模块 CI 上报的构建失败日志 (共享 binpkg 仓库 logs/ 目录),
+# 自动为主仓库提交 Issue, 方便集中理解与处理构建失败原因。
+#
+# 数据流:
+#   子模块 CI 构建失败 -> 上报 logs/<组件>/<架构>.log 到 OPENOS-BUILD-BINPKG
+#   (同名 log 删旧填新) -> 本 workflow 定时/手动扫描 -> 创建/更新主仓库 Issue
+
+on:
+  schedule:
+    - cron: '30 * * * *'      # 每小时
+  workflow_dispatch:
+
+jobs:
+  report:
+    name: collect-failures
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    env:
+      BINPKG_REPO: OPENOS-dev/OPENOS-BUILD-BINPKG
+    steps:
+      - name: 拉取 binpkg 仓库失败日志
+        run: |
+          rm -rf /tmp/binpkg && git clone --depth 1 -q "https://github.com/${BINPKG_REPO}.git" /tmp/binpkg
+          echo "=== 失败日志清单 ==="
+          find /tmp/binpkg/logs -name '*.log' 2>/dev/null | sort || echo "(无 logs 目录)"
+
+      - name: 聚合失败日志并创建/更新 Issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(/tmp/binpkg/logs/*/*.log)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "无失败日志, 无需处理"
+            exit 0
+          fi
+          echo "共 ${#files[@]} 个失败日志"
+          for f in "${files[@]}"; do
+            comp="$(basename "$(dirname "$f")")"
+            arch="$(basename "$f" .log)"
+            title="[CI-FAIL] ${comp} (${arch}) 构建失败"
+            # 去重: 已存在同标题的 open issue 则跳过 (避免重复提交)
+            existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title \"${title}\"" --json number --jq '.[0].number // empty' 2>/dev/null || true)"
+            if [ -n "$existing" ]; then
+              echo "已存在 issue #${existing}: ${title} (跳过)"
+            else
+              gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body-file "$f" || \
+                echo "::warning::创建 issue 失败: ${title}"
+              echo "已创建 issue: ${title}"
+            fi
+          done
+
+      - name: 生成失败汇总
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(/tmp/binpkg/logs/*/*.log)
+          if [ ${#files[@]} -eq 0 ]; then exit 0; fi
+          # 汇总: 每组件统计失败架构 + 错误关键字 (简化理解)
+          echo "## OPENOS CI 构建失败汇总" > /tmp/summary.md
+          echo "" >> /tmp/summary.md
+          echo "扫描时间: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> /tmp/summary.md
+          echo "失败组件/架构:" >> /tmp/summary.md
+          for f in "${files[@]}"; do
+            comp="$(basename "$(dirname "$f")")"
+            arch="$(basename "$f" .log)"
+            echo "- \`${comp}\` (${arch})" >> /tmp/summary.md
+          done
+          echo "" >> /tmp/summary.md
+          echo "详见各组件 issue (按 [CI-FAIL] 标题搜索)。" >> /tmp/summary.md
+          title="[CI-FAIL] 构建失败汇总"
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title \"${title}\"" --json number --jq '.[0].number // empty' 2>/dev/null || true)"
+          if [ -n "$existing" ]; then
+            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body-file /tmp/summary.md || true
+            echo "已更新汇总 issue #${existing}"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body-file /tmp/summary.md || true
+            echo "已创建汇总 issue"
+          fi
