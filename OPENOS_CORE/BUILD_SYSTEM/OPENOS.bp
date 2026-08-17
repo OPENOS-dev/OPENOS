@@ -1,0 +1,197 @@
+// OPENOS 构建系统 — 模块声明 (Google Soong/Blueprint 风格)
+//
+// 每个组件声明为独立模块, 由 `soong` 脚本解析并按依赖顺序构建。
+// 概念对应 Android Soong:
+//   - cc_component / kernel_component / bash_component / app_component
+//     对应 Soong 的 cc_library / kernel_build / android_app
+//   - install 对应 install_to_system (rootfs)
+//
+// 用法: ./soong --build-all --arch=x86-64 --kernel=base
+
+kernel_module {
+    name: "kernel-classic",
+    src: "src/kernel/linux-5.15.215",
+    tier: "classic",
+}
+
+kernel_module {
+    name: "kernel-base",
+    src: "src/kernel/linux-6.12.103",
+    tier: "base",
+}
+
+kernel_module {
+    name: "kernel-base7",
+    src: "src/kernel/linux-7.1.8",
+    tier: "base7",
+}
+
+kernel_module {
+    name: "kernel-preview",
+    src: "src/kernel/linux-7.2-rc7",
+    tier: "preview",
+}
+
+cc_component {
+    name: "glibc",
+    src: "src/glibc",
+    type: "autotools",          // 特殊构建 (configure --host)
+    arch_specific: true,
+}
+
+cc_component {
+    name: "gcc",
+    src: "src/gcc",
+    type: "stage2",
+    arch_specific: true,
+}
+
+cc_component {
+    name: "systemd",
+    src: "src/systemd",
+    type: "meson",
+    arch_specific: true,
+}
+
+cc_component {
+    name: "util-linux",
+    src: "src/util-linux",
+    type: "autotools",
+    arch_specific: true,
+}
+
+cc_component {
+    name: "pacman",
+    src: "src/pacman",
+    type: "autotools",
+    arch_specific: true,
+}
+
+bash_component {
+    name: "bash",
+    src: "src/bash",
+    type: "autotools",
+    arch_specific: true,
+}
+
+cc_component {
+    name: "coreutils",
+    src: "src/coreutils",
+    type: "autotools",
+    arch_specific: true,
+}
+
+cc_component {
+    name: "apt",
+    src: "src/apt",
+    type: "cmake",              // apt 是 CMake 项目
+    arch_specific: true,
+    baked_in: true,             // opt 内置后端
+}
+
+// ---- 库 ----
+library_module {
+    name: "liboak",
+    src: "src/liboak",
+    type: "c-static",
+    deps: ["libsodium"],
+}
+
+library_module {
+    name: "libvmapp",
+    src: "src/libvmapp",
+    type: "c-static",
+}
+
+library_module {
+    name: "libopenrsa",
+    src: "src/libopenrsa",
+    type: "c-static",
+    deps: ["openssl"],
+}
+
+// ---- 系统服务 ----
+service_module {
+    name: "openos-securityd",
+    src: "src/openos-securityd",
+    type: "c-bin",
+    deps: ["libsodium"],
+}
+
+service_module {
+    name: "openos-settingsd",
+    src: "src/openos-settingsd",
+    type: "c-bin",
+    deps: ["libsodium"],
+}
+
+// ---- 工具 ----
+tool_module {
+    name: "openos-oak-seal",
+    src: "src/openos-oak-seal",
+    type: "c-bin",
+    deps: ["openssl"],
+}
+
+tool_module {
+    name: "oakctl",
+    src: "src/oakctl",
+    type: "bash",
+}
+
+tool_module {
+    name: "opt",
+    src: "src/opt",
+    type: "bash",
+}
+
+tool_module {
+    name: "openos-uname",
+    src: "src/openos-uname",
+    type: "bash",
+}
+
+// ---- GUI app (Qt6) ----
+app_module {
+    name: "openos-settings",
+    src: "src/openos-settings",
+    type: "qt6-qml",
+}
+
+app_module {
+    name: "openos-oak",
+    src: "src/openos-oak",
+    type: "qt6-qml",
+}
+
+app_module {
+    name: "openos-opt",
+    src: "src/openos-opt",
+    type: "qt6-qml",
+    deps: ["liboak"],
+}
+
+app_module {
+    name: "openos-vmapp",
+    src: "src/openos-vmapp",
+    type: "qt6-qml",
+    deps: ["libvmapp"],
+}
+
+app_module {
+    name: "openos-calendar",
+    src: "src/openos-calendar",
+    type: "qt6-qml",
+}
+
+app_module {
+    name: "openos-run",
+    src: "src/openos-run",
+    type: "qt6-qml",
+}
+
+app_module {
+    name: "openos-welcome",
+    src: "src/openos-welcome",
+    type: "qt6-qml",
+}

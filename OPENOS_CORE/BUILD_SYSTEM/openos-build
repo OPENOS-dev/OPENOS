@@ -1,0 +1,201 @@
+#!/usr/bin/env python3
+"""
+OPENOS 构建系统 — Soong 风格构建驱动 (Blueprint 简化版)
+
+概念对应 Android Soong/Blueprint:
+  - OPENOS.bp 声明模块 (kernel_module/cc_component/app_module/...)
+  - 本脚本解析模块定义, 做依赖排序, 按类型分派到具体构建器
+  - 支持并行 (-j), 增量 (stamp), 架构/内核选择
+
+用法:
+  ./soong --build-all                # 构建所有模块
+  ./soong --module=<name>            # 构建单个模块
+  ./soong --arch=x86-64              # 指定架构 (默认宿主)
+  ./soong --kernel=base              # 指定内核分层
+  ./soong --set=minimal|full         # 组件集合
+  ./soong --list                     # 列出模块
+"""
+
+import argparse
+import os
+import re
+import subprocess
+import sys
+import time
+from dataclasses import dataclass, field
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+STAMP_DIR = os.path.join(ROOT, "BUILD_SYSTEM", "out", "stamps")
+
+# 组件集合
+SETS = {
+    "minimal": ["kernel", "glibc", "bash", "coreutils"],
+    "full": ["kernel", "glibc", "gcc", "bash", "coreutils",
+             "util-linux", "pacman", "systemd", "apt"],
+}
+
+# Soong 模块类型 -> 构建器
+MODULE_TYPES = {
+    "kernel_module": "kernel",
+    "cc_component": "cc",
+    "bash_component": "bash",
+    "library_module": "lib",
+    "service_module": "service",
+    "tool_module": "tool",
+    "app_module": "app",
+}
+
+
+@dataclass
+class Module:
+    name: str
+    mtype: str
+    props: dict = field(default_factory=dict)
+
+
+def parse_bp(path):
+    """解析 OPENOS.bp (简化: 处理 name/src/type/deps 等标量 + 数组)"""
+    modules = []
+    text = open(path).read()
+    # 去掉注释
+    text = re.sub(r"//[^\n]*", "", text)
+
+    for m in re.finditer(r"(\w+)\s*\{([^}]*)\}", text):
+        mtype, body = m.group(1), m.group(2)
+        props = {}
+        for kv in re.finditer(r'(\w+)\s*:\s*"([^"]*)"', body):
+            props[kv.group(1)] = kv.group(2)
+        for kv in re.finditer(r'(\w+)\s*:\s*\[([^\]]*)\]', body):
+            arr = re.findall(r'"([^"]*)"', kv.group(2))
+            props[kv.group(1)] = arr
+        name = props.get("name")
+        if name and mtype in MODULE_TYPES:
+            modules.append(Module(name, MODULE_TYPES[mtype], props))
+    return modules
+
+
+def topo_sort(modules):
+    """按 deps 拓扑排序"""
+    by_name = {m.name: m for m in modules}
+    visited, order = set(), []
+
+    def visit(m):
+        if m.name in visited:
+            return
+        visited.add(m.name)
+        for d in m.props.get("deps", []) or []:
+            if d in by_name:
+                visit(by_name[d])
+        order.append(m)
+
+    for m in modules:
+        visit(m)
+    return order
+
+
+def stamp_ok(name, arch):
+    return os.path.exists(os.path.join(STAMP_DIR, f"{arch}-{name}.ok"))
+
+
+def set_stamp(name, arch):
+    os.makedirs(STAMP_DIR, exist_ok=True)
+    open(os.path.join(STAMP_DIR, f"{arch}-{name}.ok"), "w").close()
+
+
+def run(cmd, cwd):
+    print(f"  [exec] {cmd}")
+    return subprocess.run(cmd, cwd=cwd, shell=True).returncode
+
+
+def build_module(m, arch, kernel):
+    src = os.path.join(ROOT, m.props.get("src", ""))
+    kind = m.mtype
+    name = m.name
+
+    if stamp_ok(name, arch):
+        print(f"[skip] {name} (已构建)")
+        return True
+
+    print(f"[build] {name} ({kind}, arch={arch})")
+
+    if kind == "kernel":
+        # 内核构建: 委托旧 build_component 逻辑 (defconfig + all + modules)
+        kdir = m.props["src"]
+        rc = run(
+            f"cd {kdir} && make ARCH={m.props.get('karch', 'x86_64')} "
+            f"-j$(nproc) defconfig all",
+            ROOT)
+    elif kind == "cc" or kind == "bash":
+        # 组件: 委托 build_component.sh (已有完整逻辑)
+        rc = run(
+            f"{HERE}/build_component.sh --arch={arch} --pkg={name} "
+            f"--kernel={kernel}",
+            ROOT)
+    elif kind == "lib":
+        rc = run(
+            f"cd {src} && meson setup build && ninja -C build", ROOT)
+    elif kind in ("service", "tool"):
+        rc = run(
+            f"cd {src} && meson setup build && ninja -C build", ROOT)
+    elif kind == "app":
+        rc = run(
+            f"cd {src} && meson setup build && ninja -C build", ROOT)
+    else:
+        print(f"  [!] 未知类型 {kind}, 跳过")
+        return True
+
+    if rc == 0:
+        set_stamp(name, arch)
+        print(f"  [ok] {name}")
+    else:
+        print(f"  [FAIL] {name} (rc={rc})")
+    return rc == 0
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="soong")
+    ap.add_argument("--build-all", action="store_true")
+    ap.add_argument("--module")
+    ap.add_argument("--arch", default="x86-64")
+    ap.add_argument("--kernel", default="base")
+    ap.add_argument("--set", default="minimal")
+    ap.add_argument("--list", action="store_true")
+    ap.add_argument("--jobs", default=os.cpu_count())
+    args = ap.parse_args()
+
+    bp_path = os.path.join(HERE, "OPENOS.bp")
+    modules = parse_bp(bp_path)
+    modules = topo_sort(modules)
+
+    if args.list:
+        for m in modules:
+            print(f"{m.mtype:12s} {m.name:22s} src={m.props.get('src','')}")
+        return 0
+
+    if args.module:
+        targets = [m for m in modules if m.name == args.module]
+        if not targets:
+            print(f"未知模块: {args.module}")
+            return 1
+    elif args.build_all:
+        targets = modules
+    else:
+        print("用法: ./soong --build-all | --module=<name> | --list")
+        return 1
+
+    t0 = time.time()
+    ok = True
+    for m in targets:
+        if not build_module(m, args.arch, args.kernel):
+            ok = False
+            if not args.build_all:
+                return 1
+
+    print(f"\n构建完成: {'成功' if ok else '有失败'} "
+          f"({time.time()-t0:.1f}s, {args.jobs} jobs)")
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
