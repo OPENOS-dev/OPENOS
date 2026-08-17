@@ -43,11 +43,15 @@ jobs:
             comp="$(basename "$(dirname "$f")")"
             arch="$(basename "$f" .log)"
             title="[CI-FAIL] ${comp} (${arch}) 构建失败"
-            # 去重: 已存在同标题的 open issue 则跳过 (避免重复提交)
-            existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title \"${title}\"" --json number --jq '.[0].number // empty' 2>/dev/null || true)"
-            if [ -n "$existing" ]; then
-              echo "已存在 issue #${existing}: ${title} (跳过)"
+            # 去重规则:
+            #   - 存在 open 的同标题 issue -> 不重复提交 (跳过)
+            #   - 只有 closed 的旧 issue (或无) -> 提交新 issue
+            open_num="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title \"${title}\"" --json number --jq '.[0].number // empty' 2>/dev/null || true)"
+            if [ -n "$open_num" ]; then
+              echo "跳过: 已存在 open issue #${open_num}: ${title}"
             else
+              closed_num="$(gh issue list --repo "$GITHUB_REPOSITORY" --state closed --search "in:title \"${title}\"" --json number --jq '.[0].number // empty' 2>/dev/null || true)"
+              [ -n "$closed_num" ] && echo "旧 issue #${closed_num} 已关闭, 提交新 issue"
               gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body-file "$f" || \
                 echo "::warning::创建 issue 失败: ${title}"
               echo "已创建 issue: ${title}"
@@ -75,11 +79,13 @@ jobs:
           echo "" >> /tmp/summary.md
           echo "详见各组件 issue (按 [CI-FAIL] 标题搜索)。" >> /tmp/summary.md
           title="[CI-FAIL] 构建失败汇总"
-          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title \"${title}\"" --json number --jq '.[0].number // empty' 2>/dev/null || true)"
-          if [ -n "$existing" ]; then
-            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body-file /tmp/summary.md || true
-            echo "已更新汇总 issue #${existing}"
+          open_num="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title \"${title}\"" --json number --jq '.[0].number // empty' 2>/dev/null || true)"
+          if [ -n "$open_num" ]; then
+            gh issue edit "$open_num" --repo "$GITHUB_REPOSITORY" --body-file /tmp/summary.md || true
+            echo "已更新汇总 issue #${open_num}"
           else
+            closed_num="$(gh issue list --repo "$GITHUB_REPOSITORY" --state closed --search "in:title \"${title}\"" --json number --jq '.[0].number // empty' 2>/dev/null || true)"
+            [ -n "$closed_num" ] && echo "旧汇总 issue #${closed_num} 已关闭, 提交新汇总"
             gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body-file /tmp/summary.md || true
             echo "已创建汇总 issue"
           fi
