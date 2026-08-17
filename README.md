@@ -112,7 +112,7 @@ OPENOS 目前由仓颉开发，辅以 AI 辅助，同时欢迎所有感兴趣的
 
 - [GitHub 组织](https://github.com/OPENOS-dev) – 所有源码与议题
 - [Discord 社区](https://discord.gg/xj6VCg7Na) – 实时交流与讨论
-- [NUI 设计仓库](https://github.com/OPENOS-dev/NOTHING-UI-1) – 设计规范参考
+- [NUI 设计仓库](https://github.com/OPENOS-dev/NUI2) – 设计规范参考
 
 贡献指南请参阅 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
 
