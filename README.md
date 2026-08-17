@@ -108,7 +108,7 @@ OPENOS 采用 **OPL（OPENOS-PROJECT-LICENSE）** 发布。该许可证基于 GP
 
 ## 社区与贡献
 
-OPENOS 目前由项目发起人主导开发，辅以 AI 辅助，同时欢迎所有感兴趣的开发者参与。
+OPENOS 目前由仓颉开发，辅以 AI 辅助，同时欢迎所有感兴趣的开发者参与。
 
 - [GitHub 组织](https://github.com/OPENOS-dev) – 所有源码与议题
 - [Discord 社区](https://discord.gg/xj6VCg7Na) – 实时交流与讨论
