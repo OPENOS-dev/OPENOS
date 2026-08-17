@@ -1,11 +1,10 @@
 name: OPENOS Build
 
-# 构建体系 (借鉴 Chromium OS): 矩阵并行 4 架构, ccache+binpkg 缓存, 阶段幂等
-# "不超时"策略:
-#   - 4 架构矩阵并行 (总时长 = 最慢 job 而非 4 倍)
-#   - ccache + binpkg + sysroot 缓存 (二次构建分钟级)
-#   - 默认 minimal 组件集 (kernel+glibc+bash+coreutils); gcc 等进 full
-#   - JOBS=3 (防 OOM), timeout-minutes 留足余量
+# 主系统构建: 不再本地构建组件, 而是从共享 binpkg 仓库
+# (OPENOS-BUILD-BINPKG) 拉取各子模块 CI 产出的最新 .pkg.tar.zst, 组装镜像。
+#
+# 组件构建由各子模块自己的 GitHub Actions 完成:
+#   - 子模块 push -> 构建 -> 推送 binpkg 到 OPENOS-BUILD-BINPKG bins/<组件>/<架构>/
 
 on:
   push:
@@ -17,17 +16,12 @@ on:
         type: choice
         default: base
         options: [base, base7, preview, classic]
-      set:
-        description: 组件集合
-        type: choice
-        default: minimal
-        options: [minimal, full]
 
 jobs:
   build:
-    name: build-${{ matrix.arch }}
+    name: assemble-${{ matrix.arch }}
     runs-on: ubuntu-latest
-    timeout-minutes: 330
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -35,70 +29,29 @@ jobs:
 
     env:
       ARCH: ${{ matrix.arch }}
-      JOBS: 3
-      CCACHE: 1
-      COMPONENTS: ${{ inputs.set || 'minimal' }}
       KERNEL_TIER: ${{ inputs.kernel || 'base' }}
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: 安装构建依赖与交叉工具链
+      - name: 安装组装依赖
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq \
-            build-essential ccache zstd bc bison flex libelf-dev libssl-dev \
-            dwarves kmod cpio file \
-            qt6-base-dev qt6-declarative-dev qt6-wayland-dev qt6-wayland \
-            ${{ matrix.arch == 'arm64' && 'gcc-aarch64-linux-gnu' || '' }} \
-            ${{ matrix.arch == 'arm32' && 'gcc-arm-linux-gnueabihf' || '' }} \
-            ${{ matrix.arch == 'x86' && 'gcc-multilib' || '' }}
-          ccache -M 4G
-          echo "/usr/lib/ccache" >> "$GITHUB_PATH"
+          sudo apt-get install -y -qq zstd git
 
-      - name: 恢复构建缓存 (ccache + binpkgs + sysroots + stamps)
-        id: cache
-        uses: actions/cache@v4
-        with:
-          path: OPENOS_CORE/BUILD_SYSTEM/.cache
-          key: openos-cache-${{ matrix.arch }}-${{ github.sha }}
-          restore-keys: |
-            openos-cache-${{ matrix.arch }}-
-
-      - name: 恢复缓存到构建目录
+      - name: 拉取各组件最新 binpkg
         run: |
           cd OPENOS_CORE/BUILD_SYSTEM
-          if [ -f .cache/cache-${{ matrix.arch }}.tar.zst ]; then
-            cp .cache/cache-${{ matrix.arch }}.tar.zst out/ 2>/dev/null || { mkdir -p out; cp .cache/cache-${{ matrix.arch }}.tar.zst out/; }
-            ./cache.sh restore --arch=${{ matrix.arch }}
-          fi
-
-      - name: 初始化 Board (内核 UAPI 头 + sysroot)
-        run: |
-          cd OPENOS_CORE/BUILD_SYSTEM
-          ./setup_board.sh --arch=${{ matrix.arch }} --kernel=${{ env.KERNEL_TIER }}
-
-      - name: 构建组件 (minimal: kernel+glibc+bash+coreutils)
-        run: |
-          cd OPENOS_CORE/BUILD_SYSTEM
-          ./build_component.sh --all --set=${{ env.COMPONENTS }} --kernel=${{ env.KERNEL_TIER }}
+          ./fetch_binpkgs.sh --arch=${{ env.ARCH }} --kernel=${{ env.KERNEL_TIER }}
 
       - name: 组装镜像
         run: |
           cd OPENOS_CORE/BUILD_SYSTEM
-          ./build_image.sh --arch=${{ matrix.arch }} --kernel=${{ env.KERNEL_TIER }}
-
-      - name: 保存构建缓存
-        run: |
-          cd OPENOS_CORE/BUILD_SYSTEM
-          ./cache.sh save --arch=${{ matrix.arch }}
+          ./build_image.sh --arch=${{ env.ARCH }} --kernel=${{ env.KERNEL_TIER }}
 
       - name: 上传产物
         uses: actions/upload-artifact@v4
         with:
           name: openos-${{ matrix.arch }}-${{ env.KERNEL_TIER }}
-          path: |
-            OPENOS_CORE/BUILD_SYSTEM/out/images/
-            OPENOS_CORE/BUILD_SYSTEM/out/binpkgs/
-            OPENOS_CORE/BUILD_SYSTEM/out/kernels/
+          path: OPENOS_CORE/BUILD_SYSTEM/out/images/
           if-no-files-found: warn

@@ -36,7 +36,8 @@ main() {
     rm -rf '$stage_dir' && mkdir -p '$stage_dir'
     cp -a '$sysroot/.' '$stage_dir/'
     mkdir -p '$stage_dir'/boot '$stage_dir'/etc '$stage_dir'/dev '$stage_dir'/proc '$stage_dir'/sys
-    # 内核
+    # 内核 (优先 binpkg 解压布局 boot/, 兼容本地构建布局 arch/*/boot/ 与 bzImage)
+    cp -f '$kout'/boot/* '$stage_dir'/boot/ 2>/dev/null || \
     cp -f '$kout'/arch/*/boot/* '$stage_dir'/boot/ 2>/dev/null || \
     cp -f '$kout'/bzImage '$stage_dir'/boot/ 2>/dev/null || true
     # 最小 /etc
