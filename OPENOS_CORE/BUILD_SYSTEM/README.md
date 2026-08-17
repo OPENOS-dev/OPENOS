@@ -1,12 +1,30 @@
 # OPENOS 构建体系 (BUILD_SYSTEM)
 
-构建体系采用 **Google Soong/Blueprint 风格**（声明式模块 + 统一驱动）：
-- `Android.bp` — 全部组件声明为模块（kernel/cc/app/service/tool/lib）
-- `soong` — Python 构建驱动（解析模块 → 依赖排序 → 分派构建 → 增量 stamp）
+## 组件构建分散化（2026-08-17）
 
-底层复用 **Chromium OS (Portage/ebuild) 构建模型**：
-board（架构）→ sysroot → 阶段化组件构建 → binpkg 缓存 → 镜像组装，
-可在 **GitHub Actions 上并行构建且不超时**。
+每个组件都是独立 git 子模块仓库，**各子模块自带 GitHub Actions** 构建自身
+组件并产出 `.pkg.tar.zst`（binpkg），推送到共享仓库
+[`OPENOS-BUILD-BINPKG`](https://github.com/OPENOS-dev/OPENOS-BUILD-BINPKG)。
+
+主系统构建镜像时**不再本地构建组件**，而是通过 `fetch_binpkgs.sh` 从共享仓库
+拉取各组件最新 binpkg 组装（见下）。
+
+```bash
+# 子模块 CI (各 src/<组件>/.github/workflows/build.yml):
+#   push -> 5 架构矩阵构建 -> bins/<组件>/<架构>/<组件>-<架构>-DEV2026.1.pkg.tar.zst
+#   （推送到 OPENOS-BUILD-BINPKG 需仓库 secret: OPENOS_BINPKG_TOKEN, PAT 具 repo 权限）
+
+# 主系统 CI (.github/workflows/build.yml):
+#   ./fetch_binpkgs.sh --arch=x86-64 --kernel=base   # 拉取所有组件 binpkg
+#   ./build_image.sh   --arch=x86-64 --kernel=base   # 组装 rootfs 镜像
+```
+
+底层构建模型仍借鉴 **Chromium OS (Portage/ebuild)**：
+board（架构）→ sysroot → 阶段化组件构建 → binpkg → 镜像组装。
+
+构建体系本身采用 **Soong/Blueprint 风格**（OPENOS 自命名）：
+- `OPENOS.bp` — 全部组件声明为模块（kernel/cc/app/service/tool/lib）
+- `openos-build` — Python 构建驱动（解析模块 → 依赖排序 → 分派构建 → 增量 stamp）
 
 ## 快速开始 (Soong 统一入口)
 
@@ -68,6 +86,7 @@ cd OPENOS_CORE/BUILD_SYSTEM
 | x86 | i686-openos-linux-gnu | i386 | gcc-multilib |
 | arm64 | aarch64-openos-linux-gnu | arm64 | gcc-aarch64-linux-gnu |
 | arm32 | armv7h-openos-linux-gnueabihf | arm | gcc-arm-linux-gnueabihf |
+| loong64 | loongarch64-openos-linux-gnu | loongarch | gcc-loongarch64-linux-gnu |
 
 ## 内核分层
 
