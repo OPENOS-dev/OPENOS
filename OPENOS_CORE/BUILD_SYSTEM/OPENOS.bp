@@ -195,3 +195,27 @@ app_module {
     src: "src/openos-welcome",
     type: "qt6-qml",
 }
+
+app_module {
+    name: "openos-terminal",
+    src: "src/openos-terminal",
+    type: "qt6-qml",
+}
+
+app_module {
+    name: "openos-files",
+    src: "src/openos-files",
+    type: "qt6-qml",
+}
+
+app_module {
+    name: "openos-calc",
+    src: "src/openos-calc",
+    type: "qt6-qml",
+}
+
+app_module {
+    name: "openos-notes",
+    src: "src/openos-notes",
+    type: "qt6-qml",
+}
