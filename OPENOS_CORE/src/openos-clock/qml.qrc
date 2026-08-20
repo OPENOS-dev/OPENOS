@@ -1,1 +1,2 @@
-<RCC><qresource prefix="/qml"><file>OpenUI.qml</file><file>Clock.qml</file></qresource></RCC>
+<RCC><qresource prefix="/qml"><file>OpenUI.qml</file><file>Clock.qml</file>        <file>qml/ThemedIcon.qml</file>
+    </qresource></RCC>

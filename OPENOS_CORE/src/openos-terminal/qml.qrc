@@ -2,5 +2,6 @@
     <qresource prefix="/qml">
         <file>OpenUI.qml</file>
         <file>Terminal.qml</file>
+            <file>qml/ThemedIcon.qml</file>
     </qresource>
 </RCC>

@@ -128,7 +128,7 @@ Window {
                                 anchors.rightMargin: 4
                                 width: 16; height: 16; radius: 3
                                 color: tabClose.hovered ? Qt.rgba(OpenUI.error.r,OpenUI.error.g,OpenUI.error.b,0.3) : "transparent"
-                                Text { anchors.centerIn: parent; text: "\u00D7"; color: tabClose.hovered ? OpenUI.error : OpenUI.onSurfaceDisabled; font.pixelSize: 10 }
+                                ThemedIcon { anchors.centerIn: parent; name: "window-close"; ctx: "Actions"; size: 12; color: tabClose.hovered ? OpenUI.error : OpenUI.onSurfaceDisabled }
                                 MouseArea { id: tabClose; anchors.fill: parent; hoverEnabled: true; onClicked: closeTab(index) }
                             }
                             MouseArea { anchors.fill: parent; onClicked: activeTab = index }
@@ -147,15 +147,15 @@ Window {
             Row { width: parent.width; height: 32; spacing: 2
                 Repeater {
                     model: [
-                        {icon:"\u25C0", tip:"后退", act:"back"},
-                        {icon:"\u25B6", tip:"前进", act:"fwd"},
-                        {icon:"\u25B2", tip:"上层", act:"up"},
-                        {icon:"\u21BB", tip:"刷新", act:"refresh"}
+                        {icon:"go-previous", ctx:"Navigation", tip:"后退", act:"back"},
+                        {icon:"go-next", ctx:"Navigation", tip:"前进", act:"fwd"},
+                        {icon:"go-up", ctx:"Navigation", tip:"上层", act:"up"},
+                        {icon:"view-refresh", ctx:"Actions", tip:"刷新", act:"refresh"}
                     ]
                     Rectangle {
                         width: 30; height: 30; radius: OpenUI.shapeXs
                         color: navHover.hovered ? Qt.rgba(OpenUI.onSurface.r,OpenUI.onSurface.g,OpenUI.onSurface.b,OpenUI.hoverAlpha) : "transparent"
-                        Text { anchors.centerIn: parent; text: modelData.icon; color: OpenUI.onSurfaceVariant; font.pixelSize: 12 }
+                        ThemedIcon { anchors.centerIn: parent; name: modelData.icon; ctx: modelData.ctx; size: 14; color: OpenUI.onSurfaceVariant }
                         MouseArea { id: navHover; anchors.fill: parent; hoverEnabled: true
                             onClicked: {
                                 if (modelData.act === "back") goBack()
@@ -170,7 +170,7 @@ Window {
                     width: parent.width - 132; height: 30; radius: OpenUI.shapeXs
                     color: Qt.rgba(OpenUI.surfaceBright.r,OpenUI.surfaceBright.g,OpenUI.surfaceBright.b, 0.3)
                     Row { anchors.fill: parent; anchors.margins: 6; spacing: 4
-                        Text { text: "\u25B6"; color: OpenUI.primary; font.pixelSize: 10; verticalAlignment: Text.AlignVCenter }
+                        ThemedIcon { name: "go-next"; ctx: "Navigation"; size: 12; color: OpenUI.primary; anchors.verticalCenter: parent.verticalCenter }
                         Text {
                             text: curTab() ? curTab().currentPath : "/"
                             color: OpenUI.onSurface; font.pixelSize: 12; elide: Text.ElideLeft
@@ -199,8 +199,14 @@ Window {
                     width: parent.width; height: 32; radius: OpenUI.shapeXs
                     color: itemHover.hovered ? Qt.rgba(OpenUI.primary.r,OpenUI.primary.g,OpenUI.primary.b,0.12) : "transparent"
                     Row { anchors.fill: parent; anchors.margins: OpenUI.sp1; spacing: OpenUI.sp2
-                        Text { width: 28; height: 24; text: modelData.type === "dir" ? "\u25B6" : "\u2219"
-                            color: modelData.type === "dir" ? OpenUI.primary : OpenUI.onSurfaceVariant; font.pixelSize: 14; verticalAlignment: Text.AlignVCenter }
+                        Item { width: 28; height: 24
+                            ThemedIcon {
+                                anchors.centerIn: parent
+                                name: modelData.type === "dir" ? "folder" : "document"; ctx: "Places"
+                                size: 14
+                                color: modelData.type === "dir" ? OpenUI.primary : OpenUI.onSurfaceVariant
+                            }
+                        }
                         Text { width: parent.width - 160; height: 24; text: modelData.name; color: OpenUI.onSurface; font.pixelSize: 13; verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight }
                         Text { width: 60; height: 24; text: modelData.size; color: OpenUI.onSurfaceDisabled; font.pixelSize: 11; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignRight }
                         Text { width: 80; height: 24; text: modelData.mtime; color: OpenUI.onSurfaceDisabled; font.pixelSize: 11; verticalAlignment: Text.AlignVCenter }

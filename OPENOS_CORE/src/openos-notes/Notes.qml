@@ -21,14 +21,19 @@ Window { id: notesWin; width: 640; height: 500; minimumWidth: 480; minimumHeight
         Column { width: parent.width; height: parent.height; spacing: 0
           Rectangle { width: parent.width; height: 40; color: "transparent"
             Row { anchors.fill: parent; anchors.margins: OpenUI.sp2; spacing: OpenUI.sp1
-              Text { text: "\u2712 便签"; color: OpenUI.onSurface; font.pixelSize: OpenUI.typeTitle; font.bold: true; verticalAlignment: Text.AlignVCenter }
+              Row { spacing: OpenUI.sp1; height: parent.height
+                ThemedIcon { name: "accessories-notes"; ctx: "Apps"; size: 16; color: OpenUI.onSurface; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: "便签"; color: OpenUI.onSurface; font.pixelSize: OpenUI.typeTitle; font.bold: true; verticalAlignment: Text.AlignVCenter }
+              }
               Item { width: parent.width - 130; height: 1 }
               Rectangle { width: 28; height: 28; radius: OpenUI.shapeXs; color: addH.hovered ? Qt.rgba(OpenUI.primary.r,OpenUI.primary.g,OpenUI.primary.b,0.2) : "transparent"; scale: addH.pressed ? 0.9 : 1.0; Behavior on scale { NumberAnimation { duration: 60 } }
                 Text { anchors.centerIn: parent; text: "+"; color: OpenUI.primary; font.pixelSize: 20 }; MouseArea { id: addH; anchors.fill: parent; hoverEnabled: true; onClicked: addNote() } } } }
           // 搜索栏
           Rectangle { width: parent.width; height: 32; color: "transparent"
             Rectangle { anchors.fill: parent; anchors.margins: OpenUI.sp1; radius: OpenUI.shapeXs; color: Qt.rgba(OpenUI.surfaceBright.r,OpenUI.surfaceBright.g,OpenUI.surfaceBright.b,0.2)
-              TextInput { anchors.fill: parent; anchors.margins: 6; color: OpenUI.onSurface; font.pixelSize: 12; placeholderText: "\u2315 搜索"; clip: true; onTextChanged: notesWin.searchText = text } } }
+              Row { anchors.fill: parent; anchors.margins: 6; spacing: 4
+                ThemedIcon { name: "system-search"; ctx: "Apps"; size: 12; color: OpenUI.onSurfaceVariant; anchors.verticalCenter: parent.verticalCenter }
+                TextInput { width: parent.width - 20; height: parent.height; color: OpenUI.onSurface; font.pixelSize: 12; placeholderText: "搜索"; clip: true; verticalAlignment: Text.AlignVCenter; onTextChanged: notesWin.searchText = text } } } }
           // 文件夹分类
           Rectangle { width: parent.width; height: 28; color: "transparent"
             Row { anchors.fill: parent; anchors.margins: OpenUI.sp1; spacing: 4
@@ -45,23 +50,33 @@ Window { id: notesWin; width: 640; height: 500; minimumWidth: 480; minimumHeight
                 Text { text: model.content.replace(/\n/g, " ").substring(0, 60); color: OpenUI.onSurfaceVariant; font.pixelSize: 11; elide: Text.ElideRight; width: parent.width } }
               MouseArea { anchors.fill: parent; onClicked: selectedNote = index }
               Rectangle { anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 4; width: 18; height: 18; radius: 9; visible: selectedNote === index; color: delH.hovered ? Qt.rgba(OpenUI.error.r,OpenUI.error.g,OpenUI.error.b,0.3) : "transparent"
-                Text { anchors.centerIn: parent; text: "\u00D7"; color: OpenUI.error; font.pixelSize: 12 }; MouseArea { id: delH; anchors.fill: parent; hoverEnabled: true; onClicked: deleteNote(index) } } } } } }
+                ThemedIcon { anchors.centerIn: parent; name: "window-close"; ctx: "Actions"; size: 12; color: OpenUI.error }; MouseArea { id: delH; anchors.fill: parent; hoverEnabled: true; onClicked: deleteNote(index) } } } } } }
       // 分隔线
       Rectangle { width: 1; height: parent.height; color: Qt.rgba(OpenUI.outlineVariant.r,OpenUI.outlineVariant.g,OpenUI.outlineVariant.b,0.3) }
       // 右侧: 内容编辑区
       Rectangle { width: parent.width - 241; height: parent.height; color: "transparent"
         Column { width: parent.width; height: parent.height; spacing: 0; anchors.margins: OpenUI.sp3
           Rectangle { width: parent.width; height: parent.height; visible: selectedNote < 0; color: "transparent"
-            Text { anchors.centerIn: parent; text: "\u2712 选择或创建一条笔记"; color: OpenUI.onSurfaceDisabled; font.pixelSize: OpenUI.typeBodyM } }
+            Column { anchors.centerIn: parent; spacing: OpenUI.sp2
+              ThemedIcon { name: "accessories-notes"; ctx: "Apps"; size: 40; color: OpenUI.onSurfaceDisabled; anchors.horizontalCenter: parent.horizontalCenter }
+              Text { text: "选择或创建一条笔记"; color: OpenUI.onSurfaceDisabled; font.pixelSize: OpenUI.typeBodyM; anchors.horizontalCenter: parent.horizontalCenter }
+            } }
           Rectangle { width: parent.width; height: parent.height; visible: selectedNote >= 0; color: "transparent"
             Column { width: parent.width; height: parent.height; spacing: OpenUI.sp2; anchors.margins: OpenUI.sp3
               Rectangle { width: parent.width; height: 36; color: "transparent"
                 TextInput { id: noteTitleField; anchors.fill: parent; text: selectedNote >= 0 ? notesModel.get(selectedNote).title : ""; color: OpenUI.onSurface; font.pixelSize: 20; font.bold: true; onTextChanged: { if (selectedNote >= 0) notesModel.setProperty(selectedNote, "title", text) } } }
               // 格式工具栏
               Row { width: parent.width; height: 28; spacing: 4
-                Repeater { model: ["\u0042","\u0049","\u0055","\u2219","\u2261","\u2630"]
+                Repeater { model: [
+                    {text:"B", icon:""}, {text:"I", icon:""}, {text:"U", icon:""},
+                    {text:"", icon:"view-list", ctx:"Actions"},
+                    {text:"", icon:"open-menu", ctx:"Actions"},
+                    {text:"", icon:"overflow-menu", ctx:"Actions"}
+                  ]
                   Rectangle { width: 28; height: 28; radius: OpenUI.shapeXs; color: fh.hovered ? Qt.rgba(OpenUI.primary.r,OpenUI.primary.g,OpenUI.primary.b,0.15) : "transparent"; scale: fh.pressed ? 0.9 : 1.0; Behavior on scale { NumberAnimation { duration: 60 } }
-                    Text { anchors.centerIn: parent; text: modelData; color: OpenUI.onSurfaceVariant; font.pixelSize: 13 }; MouseArea { id: fh; anchors.fill: parent; hoverEnabled: true } } }
+                    Text { anchors.centerIn: parent; text: modelData.text; color: OpenUI.onSurfaceVariant; font.pixelSize: 13; font.bold: modelData.text === "B"; visible: modelData.text.length > 0 }
+                    ThemedIcon { anchors.centerIn: parent; name: modelData.icon; ctx: modelData.ctx; size: 14; color: OpenUI.onSurfaceVariant; visible: modelData.icon.length > 0 }
+                    MouseArea { id: fh; anchors.fill: parent; hoverEnabled: true } } }
                 Item { width: parent.width - 170; height: 1 }
                 Text { text: selectedNote >= 0 ? notesModel.get(selectedNote).date : ""; color: OpenUI.onSurfaceDisabled; font.pixelSize: 11; verticalAlignment: Text.AlignVCenter } }
               // 内容编辑区

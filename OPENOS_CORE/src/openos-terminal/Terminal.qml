@@ -35,14 +35,14 @@ Window { id: termWin; width: 760; height: 500; minimumWidth: 400; minimumHeight:
           Repeater { model: tabModel
             Rectangle { width: Math.max(80, Math.min(140, parent.width / Math.max(tabModel.count, 1) - 20)); height: 30; color: activeTab === index ? Qt.rgba(0.2,0.2,0.2,0.8) : Qt.rgba(0.12,0.12,0.12,0.9); radius: 4; border.color: activeTab === index ? OpenUI.outlineVariant : "transparent"; border.width: 1
               Row { anchors.fill: parent; anchors.margins: 4; spacing: 4
-                Text { text: "\u25CF"; color: model.name === "shell" ? OpenUI.tertiary : OpenUI.primary; font.pixelSize: 8; verticalAlignment: Text.AlignVCenter }
+                ThemedIcon { name: "media-record"; ctx: "Actions"; size: 8; color: model.name === "shell" ? OpenUI.tertiary : OpenUI.primary; anchors.verticalCenter: parent.verticalCenter }
                 Text { text: model.name; color: activeTab === index ? OpenUI.onSurface : OpenUI.onSurfaceVariant; font.pixelSize: 11; elide: Text.ElideRight; width: parent.width - 30; verticalAlignment: Text.AlignVCenter }
                 Rectangle { width: 14; height: 14; radius: 7; visible: tabModel.count > 1; color: tch.hovered ? Qt.rgba(OpenUI.error.r,OpenUI.error.g,OpenUI.error.b,0.3) : "transparent"
-                  Text { anchors.centerIn: parent; text: "\u00D7"; color: OpenUI.onSurfaceDisabled; font.pixelSize: 10 }
+                  ThemedIcon { anchors.centerIn: parent; name: "window-close"; ctx: "Actions"; size: 10; color: OpenUI.onSurfaceDisabled }
                   MouseArea { id: tch; anchors.fill: parent; hoverEnabled: true; onClicked: closeTab(index) } } }
               MouseArea { anchors.fill: parent; onClicked: activeTab = index } } }
           Rectangle { width: 24; height: 24; radius: 4; color: ath.hovered ? Qt.rgba(OpenUI.onSurface.r,OpenUI.onSurface.g,OpenUI.onSurface.b,0.1) : "transparent"; anchors.verticalCenter: parent.verticalCenter
-            Text { anchors.centerIn: parent; text: "+"; color: OpenUI.onSurfaceVariant; font.pixelSize: 16 }
+            ThemedIcon { anchors.centerIn: parent; name: "list-add"; ctx: "Actions"; size: 16; color: OpenUI.onSurfaceVariant }
             MouseArea { id: ath; anchors.fill: parent; hoverEnabled: true; onClicked: addTab("shell") } } } }
       // 终端输出
       Rectangle { width: parent.width; height: parent.height - 32; color: Qt.rgba(0.08,0.08,0.08,1)

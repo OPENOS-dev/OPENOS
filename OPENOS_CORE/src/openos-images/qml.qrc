@@ -1,1 +1,2 @@
-<RCC><qresource prefix="/qml"><file>OpenUI.qml</file><file>ImageViewer.qml</file></qresource></RCC>
+<RCC><qresource prefix="/qml"><file>OpenUI.qml</file><file>ImageViewer.qml</file>        <file>qml/ThemedIcon.qml</file>
+    </qresource></RCC>

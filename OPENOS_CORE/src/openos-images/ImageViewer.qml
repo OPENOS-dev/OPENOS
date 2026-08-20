@@ -28,20 +28,20 @@ Window { id: win; width: 720; height: 520; minimumWidth: 400; minimumHeight: 300
         Item { width: parent.width - 360; height: 1 }
         // 模式切换
         Rectangle { width: 28; height: 28; radius: OpenUI.shapeXs; color: gh.hovered ? Qt.rgba(OpenUI.onSurface.r,OpenUI.onSurface.g,OpenUI.onSurface.b,OpenUI.hoverAlpha) : "transparent"; anchors.verticalCenter: parent.verticalCenter
-          Text { anchors.centerIn: parent; text: "\u25A6"; color: gridMode ? OpenUI.primary : OpenUI.onSurfaceVariant; font.pixelSize: 14 }
+          ThemedIcon { anchors.centerIn: parent; name: "view-grid"; ctx: "Actions"; size: 14; color: gridMode ? OpenUI.primary : OpenUI.onSurfaceVariant }
           MouseArea { id: gh; anchors.fill: parent; hoverEnabled: true; onClicked: gridMode = true } }
         Rectangle { width: 28; height: 28; radius: OpenUI.shapeXs; color: ph.hovered ? Qt.rgba(OpenUI.onSurface.r,OpenUI.onSurface.g,OpenUI.onSurface.b,OpenUI.hoverAlpha) : "transparent"; anchors.verticalCenter: parent.verticalCenter
-          Text { anchors.centerIn: parent; text: "\u25A3"; color: !gridMode ? OpenUI.primary : OpenUI.onSurfaceVariant; font.pixelSize: 14 }
+          ThemedIcon { anchors.centerIn: parent; name: "image-viewer"; ctx: "Apps"; size: 14; color: !gridMode ? OpenUI.primary : OpenUI.onSurfaceVariant }
           MouseArea { id: ph; anchors.fill: parent; hoverEnabled: true; onClicked: gridMode = false } }
         Rectangle { width: 28; height: 28; radius: OpenUI.shapeXs; color: sh.hovered ? Qt.rgba(OpenUI.onSurface.r,OpenUI.onSurface.g,OpenUI.onSurface.b,OpenUI.hoverAlpha) : "transparent"; anchors.verticalCenter: parent.verticalCenter
-          Text { anchors.centerIn: parent; text: "\u25B6"; color: slideshow ? OpenUI.primary : OpenUI.onSurfaceVariant; font.pixelSize: 14 }
+          ThemedIcon { anchors.centerIn: parent; name: "media-playback-start"; ctx: "Actions"; size: 14; color: slideshow ? OpenUI.primary : OpenUI.onSurfaceVariant }
           MouseArea { id: sh; anchors.fill: parent; hoverEnabled: true; onClicked: { slideshow = !slideshow; if (slideshow && currentIndex < 0) { currentIndex = 0; gridMode = false } } } }
         // 缩放 (仅预览模式)
         Rectangle { width: 28; height: 28; radius: OpenUI.shapeXs; color: zoh.hovered ? Qt.rgba(OpenUI.onSurface.r,OpenUI.onSurface.g,OpenUI.onSurface.b,OpenUI.hoverAlpha) : "transparent"; anchors.verticalCenter: parent.verticalCenter; visible: !gridMode
-          Text { anchors.centerIn: parent; text: "\u002B"; color: OpenUI.onSurfaceVariant; font.pixelSize: 16 }
+          ThemedIcon { anchors.centerIn: parent; name: "zoom-in"; ctx: "Actions"; size: 16; color: OpenUI.onSurfaceVariant }
           MouseArea { id: zoh; anchors.fill: parent; hoverEnabled: true; onClicked: zoomLevel = Math.min(400, zoomLevel + 25) } }
         Rectangle { width: 28; height: 28; radius: OpenUI.shapeXs; color: zch.hovered ? Qt.rgba(OpenUI.onSurface.r,OpenUI.onSurface.g,OpenUI.onSurface.b,OpenUI.hoverAlpha) : "transparent"; anchors.verticalCenter: parent.verticalCenter; visible: !gridMode
-          Text { anchors.centerIn: parent; text: "\u2212"; color: OpenUI.onSurfaceVariant; font.pixelSize: 16 }
+          ThemedIcon { anchors.centerIn: parent; name: "zoom-out"; ctx: "Actions"; size: 16; color: OpenUI.onSurfaceVariant }
           MouseArea { id: zch; anchors.fill: parent; hoverEnabled: true; onClicked: zoomLevel = Math.max(10, zoomLevel - 25) } }
         Text { text: zoomLevel + "%"; anchors.verticalCenter: parent.verticalCenter; color: OpenUI.onSurfaceVariant; font.pixelSize: OpenUI.typeLabelS; visible: !gridMode } } }
 
@@ -51,7 +51,7 @@ Window { id: win; width: 720; height: 520; minimumWidth: 400; minimumHeight: 300
       delegate: Rectangle { width: 120; height: 120; radius: OpenUI.shapeMd; color: Qt.rgba(OpenUI.surfaceBright.r,OpenUI.surfaceBright.g,OpenUI.surfaceBright.b,0.15); border.color: currentIndex === index ? OpenUI.primary : "transparent"; border.width: 2
         Column { anchors.centerIn: parent; spacing: 4
           Rectangle { width: 64; height: 64; radius: OpenUI.shapeSm; anchors.horizontalCenter: parent.horizontalCenter; color: modelData.color
-            Text { anchors.centerIn: parent; text: "\u2B21"; color: Qt.rgba(1,1,1,0.5); font.pixelSize: 24 } }
+            ThemedIcon { anchors.centerIn: parent; name: "image-missing"; ctx: "Status"; size: 24; color: Qt.rgba(1,1,1,0.5) } }
           Text { text: modelData.name; anchors.horizontalCenter: parent.horizontalCenter; color: OpenUI.onSurface; font.pixelSize: OpenUI.typeLabelS; elide: Text.ElideRight; width: 100; horizontalAlignment: Text.AlignHCenter }
           Text { text: modelData.dim; anchors.horizontalCenter: parent.horizontalCenter; color: OpenUI.onSurfaceVariant; font.pixelSize: 10 } }
         MouseArea { anchors.fill: parent; hoverEnabled: true; onClicked: { currentIndex = index; gridMode = false; zoomLevel = 100 } } } }
@@ -60,18 +60,18 @@ Window { id: win; width: 720; height: 520; minimumWidth: 400; minimumHeight: 300
     Item { visible: !gridMode; anchors.top: parent.top; anchors.topMargin: 40; anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right
       // 上一张
       Rectangle { anchors.left: parent.left; anchors.leftMargin: 8; anchors.verticalCenter: parent.verticalCenter; width: 32; height: 32; radius: 16; color: prev.hovered ? Qt.rgba(OpenUI.onSurface.r,OpenUI.onSurface.g,OpenUI.onSurface.b,0.2) : Qt.rgba(0,0,0,0.4); z: 2
-        Text { anchors.centerIn: parent; text: "\u276E"; color: OpenUI.onSurface; font.pixelSize: 16 }
+        ThemedIcon { anchors.centerIn: parent; name: "go-previous"; ctx: "Navigation"; size: 16; color: OpenUI.onSurface }
         MouseArea { id: prev; anchors.fill: parent; hoverEnabled: true; onClicked: { currentIndex = (currentIndex - 1 + images.length) % images.length; zoomLevel = 100 } } }
       // 下一张
       Rectangle { anchors.right: parent.right; anchors.rightMargin: 8; anchors.verticalCenter: parent.verticalCenter; width: 32; height: 32; radius: 16; color: nxt.hovered ? Qt.rgba(OpenUI.onSurface.r,OpenUI.onSurface.g,OpenUI.onSurface.b,0.2) : Qt.rgba(0,0,0,0.4); z: 2
-        Text { anchors.centerIn: parent; text: "\u276F"; color: OpenUI.onSurface; font.pixelSize: 16 }
+        ThemedIcon { anchors.centerIn: parent; name: "go-next"; ctx: "Navigation"; size: 16; color: OpenUI.onSurface }
         MouseArea { id: nxt; anchors.fill: parent; hoverEnabled: true; onClicked: { currentIndex = (currentIndex + 1) % images.length; zoomLevel = 100 } } }
       // 图片显示
       Flickable { anchors.fill: parent; contentWidth: imgContainer.width; contentHeight: imgContainer.height; clip: true; interactive: true; boundsBehavior: Flickable.StopAtBounds
         Rectangle { id: imgContainer; width: Math.max(parent.width, imgView.width * zoomLevel / 100); height: Math.max(parent.height, imgView.height * zoomLevel / 100)
           Rectangle { id: imgView; width: 320; height: 240; radius: OpenUI.shapeSm; anchors.centerIn: parent; color: currentIndex >= 0 ? images[currentIndex].color : OpenUI.surfaceDim
             transform: Scale { originX: 160; originY: 120; xScale: zoomLevel / 100; yScale: zoomLevel / 100 }
-            Text { anchors.centerIn: parent; text: "\u2B21"; color: Qt.rgba(1,1,1,0.3); font.pixelSize: 80 } } } }
+            ThemedIcon { anchors.centerIn: parent; name: "image-missing"; ctx: "Status"; size: 80; color: Qt.rgba(1,1,1,0.3) } } } }
       // 底部信息
       Rectangle { anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right; height: 32; color: Qt.rgba(0,0,0,0.5)
         Row { anchors.fill: parent; anchors.margins: OpenUI.sp2; spacing: OpenUI.sp4; verticalAlignment: Text.AlignVCenter
