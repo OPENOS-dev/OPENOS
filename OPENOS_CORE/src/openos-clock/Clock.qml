@@ -1,16 +1,10 @@
 import QtQuick 2.15; import QtQuick.Window 2.15
 Window { id: win; width: 360; height: 400; minimumWidth: 300; minimumHeight: 340; flags: Qt.FramelessWindowHint; title: "时钟"; color: "transparent"
-  property int tab: 0; property int dragX: 0; property int dragY: 0; property bool dragging: false
+  property int tab: 0
   property var alarms: [{time:"07:00", label:"起床", enabled:true},{time:"12:00", label:"午休", enabled:false},{time:"22:00", label:"睡觉", enabled:true}]
-  Rectangle { anchors.top: parent.top; anchors.right: parent.right; anchors.margins: 6; z: 10; width: 24; height: 24; radius: OpenUI.shapeFull
-    color: ch.hovered ? Qt.rgba(OpenUI.error.r,OpenUI.error.g,OpenUI.error.b,0.3) : "transparent"
-    Text { anchors.centerIn: parent; text: "\u00D7"; color: ch.hovered ? OpenUI.error : OpenUI.onSurfaceVariant; font.pixelSize: 16 }
-    MouseArea { id: ch; anchors.fill: parent; hoverEnabled: true; onClicked: Qt.quit() } }
   Rectangle { anchors.fill: parent; anchors.margins: 1; radius: OpenUI.shapeLg
     color: Qt.rgba(OpenUI.neutral0.r,OpenUI.neutral0.g,OpenUI.neutral0.b,0.92); border.color: OpenUI.outlineVariant; border.width: 1; clip: true
     Column { anchors.fill: parent; anchors.margins: OpenUI.sp3; spacing: OpenUI.sp2
-      Rectangle { width: parent.width; height: 24; color: "transparent"
-        MouseArea { anchors.fill: parent; onPressed: { dragX = mouse.x; dragY = mouse.y; dragging = true }; onMouseXChanged: { if (dragging) { win.x += mouse.x - dragX; win.y += mouse.y - dragY } }; onReleased: dragging = false } }
       // 时间显示
       Text { id: timeDisplay; text: Qt.formatTime(new Date(),"HH:mm:ss"); anchors.horizontalCenter: parent.horizontalCenter; color: OpenUI.onSurface; font.pixelSize: 48; font.weight: Font.Light
         Timer { interval: 1000; running: true; repeat: true; onTriggered: timeDisplay.text = Qt.formatTime(new Date(),"HH:mm:ss") } }

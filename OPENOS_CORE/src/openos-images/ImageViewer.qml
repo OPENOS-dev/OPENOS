@@ -3,7 +3,7 @@ import QtQuick 2.15; import QtQuick.Window 2.15; import QtQuick.Controls 2.15
  * 支持: 缩略图网格浏览, 单图预览, 缩放/平移, 幻灯片放映, 基本信息显示
  */
 Window { id: win; width: 720; height: 520; minimumWidth: 400; minimumHeight: 300; flags: Qt.FramelessWindowHint; title: "图片查看器"; color: "transparent"
-  property bool gridMode: true; property int currentIndex: -1; property int zoomLevel: 100; property bool slideshow: false; property int dragX: 0; property int dragY: 0; property bool dragging: false
+  property bool gridMode: true; property int currentIndex: -1; property int zoomLevel: 100; property bool slideshow: false
   property var images: [
     {name:"示例 1 - 日出", size:"1.2 MB", dim:"1920x1080", color:"#E65100"},
     {name:"示例 2 - 海洋", size:"0.8 MB", dim:"2560x1440", color:"#00695C"},
@@ -18,21 +18,11 @@ Window { id: win; width: 720; height: 520; minimumWidth: 400; minimumHeight: 300
   ]
   Timer { id: slideshowTimer; interval: 3000; running: slideshow; repeat: true; onTriggered: { currentIndex = (currentIndex + 1) % images.length; gridMode = false } }
 
-  // 关闭
-  Rectangle { anchors.top: parent.top; anchors.right: parent.right; anchors.margins: 6; z: 10; width: 24; height: 24; radius: OpenUI.shapeFull
-    color: ch.hovered ? Qt.rgba(OpenUI.error.r,OpenUI.error.g,OpenUI.error.b,0.3) : "transparent"
-    Text { anchors.centerIn: parent; text: "\u00D7"; color: ch.hovered ? OpenUI.error : OpenUI.onSurfaceVariant; font.pixelSize: 16 }
-    MouseArea { id: ch; anchors.fill: parent; hoverEnabled: true; onClicked: Qt.quit() } }
-
   Rectangle { anchors.fill: parent; anchors.margins: 1; radius: OpenUI.shapeLg
     color: Qt.rgba(OpenUI.neutral0.r,OpenUI.neutral0.g,OpenUI.neutral0.b,0.92); border.color: OpenUI.outlineVariant; border.width: 1; clip: true
 
-    // 拖拽区
-    Rectangle { anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right; height: 28; color: "transparent"
-      MouseArea { anchors.fill: parent; onPressed: { dragX = mouse.x; dragY = mouse.y; dragging = true }; onMouseXChanged: { if (dragging) { win.x += mouse.x - dragX; win.y += mouse.y - dragY } }; onReleased: dragging = false } }
-
     // 工具栏
-    Rectangle { anchors.top: parent.top; anchors.topMargin: 28; anchors.left: parent.left; anchors.right: parent.right; height: 36; color: "transparent"
+    Rectangle { anchors.top: parent.top; anchors.topMargin: 0; anchors.left: parent.left; anchors.right: parent.right; height: 36; color: "transparent"
       Row { anchors.fill: parent; anchors.margins: OpenUI.sp2; spacing: OpenUI.sp2; verticalAlignment: Text.AlignVCenter
         Text { text: images.length + " 张图片"; anchors.verticalCenter: parent.verticalCenter; color: OpenUI.onSurfaceVariant; font.pixelSize: OpenUI.typeLabelM }
         Item { width: parent.width - 360; height: 1 }
@@ -56,7 +46,7 @@ Window { id: win; width: 720; height: 520; minimumWidth: 400; minimumHeight: 300
         Text { text: zoomLevel + "%"; anchors.verticalCenter: parent.verticalCenter; color: OpenUI.onSurfaceVariant; font.pixelSize: OpenUI.typeLabelS; visible: !gridMode } } }
 
     // 缩略图网格
-    GridView { id: grid; visible: gridMode; anchors.top: parent.top; anchors.topMargin: 68; anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right; anchors.margins: OpenUI.sp3
+    GridView { id: grid; visible: gridMode; anchors.top: parent.top; anchors.topMargin: 40; anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right; anchors.margins: OpenUI.sp3
       model: images; cellWidth: 140; cellHeight: 140; interactive: true
       delegate: Rectangle { width: 120; height: 120; radius: OpenUI.shapeMd; color: Qt.rgba(OpenUI.surfaceBright.r,OpenUI.surfaceBright.g,OpenUI.surfaceBright.b,0.15); border.color: currentIndex === index ? OpenUI.primary : "transparent"; border.width: 2
         Column { anchors.centerIn: parent; spacing: 4
@@ -67,7 +57,7 @@ Window { id: win; width: 720; height: 520; minimumWidth: 400; minimumHeight: 300
         MouseArea { anchors.fill: parent; hoverEnabled: true; onClicked: { currentIndex = index; gridMode = false; zoomLevel = 100 } } } }
 
     // 单图预览
-    Item { visible: !gridMode; anchors.top: parent.top; anchors.topMargin: 68; anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right
+    Item { visible: !gridMode; anchors.top: parent.top; anchors.topMargin: 40; anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right
       // 上一张
       Rectangle { anchors.left: parent.left; anchors.leftMargin: 8; anchors.verticalCenter: parent.verticalCenter; width: 32; height: 32; radius: 16; color: prev.hovered ? Qt.rgba(OpenUI.onSurface.r,OpenUI.onSurface.g,OpenUI.onSurface.b,0.2) : Qt.rgba(0,0,0,0.4); z: 2
         Text { anchors.centerIn: parent; text: "\u276E"; color: OpenUI.onSurface; font.pixelSize: 16 }

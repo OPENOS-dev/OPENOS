@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/qml">
+        <file>OpenUI.qml</file>
+        <file>Notes.qml</file>
+    </qresource>
+</RCC>
