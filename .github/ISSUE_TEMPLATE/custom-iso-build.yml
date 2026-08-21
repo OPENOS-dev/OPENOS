@@ -57,10 +57,10 @@ body:
       label: 组件集合 / Component Set
       description: 选择要包含的软件范围（系统基础包始终包含，不可去除） / Select the software scope (system base packages are always included and cannot be removed)
       options:
-        - 基础包 (系统核心 + pacman) / Basic (System Core + Pacman)
-        - 普通包 (基础包 + 日常软件) / Regular (Basic + Daily Apps)
-        - 完整包 (普通包 + 开发工具) / Full (Regular + Dev Tools)
-        - 自定义 (专业用户手动指定) / Custom (Advanced Users)
+        - 基础包 (Basic) - 系统核心 + pacman
+        - 普通包 (Regular) - 基础包 + 日常软件
+        - 完整包 (Full) - 普通包 + 开发工具
+        - 自定义 (Custom) - 专业用户手动指定
     validations:
       required: true
 
