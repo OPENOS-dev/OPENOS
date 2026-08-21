@@ -1,0 +1,72 @@
+name: Bug 报告
+description: 提交错误或异常行为
+title: "[BUG] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Bug 报告
+
+        感谢您帮助改进 OPENOS！请尽可能详细地描述问题。
+
+  - type: input
+    id: component
+    attributes:
+      label: 相关组件
+      description: 问题发生在哪个组件？（如内核、桌面环境、某个 App、构建系统等）
+      placeholder: "例如：openos-terminal、OPENUI-desktop、内核"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 清晰描述遇到的问题是什么
+      placeholder: "当...时，出现了...的问题"
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 复现步骤
+      description: 如何复现该问题
+      placeholder: |
+        1. 打开...
+        2. 点击...
+        3. 看到错误...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+      description: 您期望的正确行为是什么
+      placeholder: "应该..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+      description: 实际发生了什么
+      placeholder: "实际出现了..."
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本信息
+      description: 相关组件的版本号或提交哈希
+      placeholder: "例如：DEV2026.1、commit abc1234"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 相关日志/截图（可选）
+      description: 错误日志、dmesg 输出、截图等有助于定位问题的信息
+      placeholder: "粘贴日志或拖入截图..."
+      render: shell
