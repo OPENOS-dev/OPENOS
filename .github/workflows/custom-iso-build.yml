@@ -36,12 +36,23 @@ jobs:
       comp_set: ${{ steps.parse.outputs.comp_set }}
 
     steps:
-      - name: 添加构建中标签
+      - name: 添加构建中标签并回复准备通知
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh issue edit "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" \
             --add-label "building-iso" || true
+          gh issue comment "$ISSUE_NUMBER" \
+            --repo "$GITHUB_REPOSITORY" \
+            --body "## 正在准备构建
+
+收到您的 ISO 构建请求，正在准备中，请稍候...
+
+- 构建参数解析中...
+- 依赖组件拉取中...
+- 预计构建时间：2-5 分钟
+
+构建完成后会在此通知您。" || true
 
       - name: 解析 Issue 体提取构建参数
         id: parse
@@ -341,7 +352,10 @@ METAEOF
 **下载链接**: [${ISO_FILE}](${DL_URL})
 
 > 此文件将在 ${EXPIRE_DAYS} 天后（${EXPIRE_DATE}）自动从仓库删除。
-> 如需重新构建，请提交新的 Issue。"
+
+---
+
+**请回复**：此镜像是否满足您的需求？请回复 **是** 关闭此 Issue，或回复 **否** 告诉我们有什么问题。"
           else
             DL_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
             gh issue comment "$ISSUE_NUMBER" \
@@ -363,7 +377,11 @@ METAEOF
 1. 打开此构建运行页面：[${GITHUB_RUN_ID}](${DL_URL})
 2. 在 **Artifacts** 区域找到 \`${ISO_FILE}\` 点击下载
 
-> 此产物将在 ${EXPIRE_DAYS} 天后自动过期。"
+> 此产物将在 ${EXPIRE_DAYS} 天后自动过期。
+
+---
+
+**请回复**：此镜像是否满足您的需求？请回复 **是** 关闭此 Issue，或回复 **否** 告诉我们有什么问题。"
           fi
 
           gh issue edit "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" \
