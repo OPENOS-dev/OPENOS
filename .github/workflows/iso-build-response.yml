@@ -1,8 +1,8 @@
 name: ISO Build User Response
 
-# 监听用户对 ISO 构建结果的回复:
-#   - 回复"是"/"yes" → 关闭 Issue
-#   - 回复"否"/"no" → 询问有什么问题
+# 监听用户对 ISO 构建结果的回复 / Listen for user responses to ISO build results
+#   - 回复"是"/"yes" → 关闭 Issue / close issue
+#   - 回复"否"/"no" → 询问有什么问题 / ask what's wrong
 
 on:
   issue_comment:
@@ -11,6 +11,7 @@ on:
 jobs:
   handle-response:
     # 仅当 Issue 有 iso-built 标签且评论不是机器人自己发出的
+    # Only when issue has iso-built label and comment is not from bot
     if: |
       contains(github.event.issue.labels.*.name, 'iso-built') &&
       github.event.comment.user.type != 'Bot' &&
@@ -24,16 +25,15 @@ jobs:
       COMMENT_BODY: ${{ github.event.comment.body }}
 
     steps:
-      - name: 解析用户回复
+      - name: 解析用户回复 / Parse user response
         id: parse
         run: |
           COMMENT="${{ github.event.comment.body }}"
           COMMENT_LOWER=$(echo "$COMMENT" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
 
-          echo "用户回复: $COMMENT"
-          echo "小写: $COMMENT_LOWER"
+          echo "用户回复 / User reply: $COMMENT"
 
-          # 匹配"是"或"yes"（包括各种变体）
+          # 匹配"是"/"yes"/"y" 或 "否"/"no"/"n"
           case "$COMMENT_LOWER" in
             *是*|*yes*|*y*)
               echo "action=close" >> "$GITHUB_OUTPUT"
@@ -46,7 +46,7 @@ jobs:
               ;;
           esac
 
-      - name: 用户确认完成 - 关闭 Issue
+      - name: 用户确认完成 - 关闭 Issue / User confirmed - close issue
         if: steps.parse.outputs.action == 'close'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -54,17 +54,19 @@ jobs:
           gh issue comment "$ISSUE_NUMBER" \
             --repo "$GITHUB_REPOSITORY" \
             --body "感谢您的确认！此 Issue 即将关闭。
+Thank you for your confirmation! This issue will be closed.
 
-如果您后续需要新的构建，欢迎随时提交新的 ISO 构建请求。"
+如果您后续需要新的构建，欢迎随时提交新的 ISO 构建请求。
+If you need a new build in the future, feel free to submit a new ISO build request."
           gh issue close "$ISSUE_NUMBER" \
             --repo "$GITHUB_REPOSITORY" \
-            --comment "根据用户确认关闭" || true
+            --comment "根据用户确认关闭 / Closed per user confirmation" || true
           gh issue edit "$ISSUE_NUMBER" \
             --repo "$GITHUB_REPOSITORY" \
             --remove-label "iso-built" \
             --add-label "iso-closed" || true
 
-      - name: 用户不满意 - 询问具体问题
+      - name: 用户不满意 - 询问具体问题 / User not satisfied - ask for details
         if: steps.parse.outputs.action == 'ask'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -75,27 +77,30 @@ jobs:
             --add-label "iso-needs-fix" || true
           gh issue comment "$ISSUE_NUMBER" \
             --repo "$GITHUB_REPOSITORY" \
-            --body "## 收到您的反馈
+            --body "## 收到您的反馈 / Feedback Received
 
 很抱歉镜像未能满足您的需求。请告诉我们具体遇到了什么问题？
+Sorry the image didn't meet your needs. Please tell us what went wrong.
 
-例如：
-- 镜像启动失败
-- 缺少某个软件包
-- 某个功能无法正常使用
-- 其他问题
+例如 / For example：
+- 镜像启动失败 / Image fails to boot
+- 缺少某个软件包 / Missing a package
+- 某个功能无法正常使用 / A feature doesn't work
+- 其他问题 / Other issues
 
 维护者会尽快查看并协助您。
+Maintainers will review and assist you as soon as possible.
 
 ---
 
-如果您想重新提交构建请求，请点击 [新建 ISO 构建请求](${{ github.server_url }}/${{ github.repository }}/issues/new?template=custom-iso-build.yml)。" || true
+如果您想重新提交构建请求，请点击 [新建 ISO 构建请求 / New ISO Build Request](${{ github.server_url }}/${{ github.repository }}/issues/new?template=custom-iso-build.yml)。" || true
 
-      - name: 无法识别的回复 - 提示用户
+      - name: 无法识别的回复 - 提示用户 / Unknown reply - prompt user
         if: steps.parse.outputs.action == 'unknown'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh issue comment "$ISSUE_NUMBER" \
             --repo "$GITHUB_REPOSITORY" \
-            --body "没有看懂您的回复，请回复 **是** 来关闭此 Issue，或回复 **否** 告诉我们有什么问题。" || true
+            --body "没有看懂您的回复，请回复 **是** 来关闭此 Issue，或回复 **否** 告诉我们有什么问题。
+Sorry, I didn't understand that. Please reply **yes** to close this issue, or **no** to tell us what's wrong." || true

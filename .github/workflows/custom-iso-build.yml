@@ -44,15 +44,17 @@ jobs:
             --add-label "building-iso" || true
           gh issue comment "$ISSUE_NUMBER" \
             --repo "$GITHUB_REPOSITORY" \
-            --body "## 正在准备构建
+            --body "## 正在准备构建 / Preparing Build
 
 收到您的 ISO 构建请求，正在准备中，请稍候...
+Your ISO build request has been received. Preparing, please wait...
 
-- 构建参数解析中...
-- 依赖组件拉取中...
-- 预计构建时间：2-5 分钟
+- 构建参数解析中 / Parsing build parameters...
+- 依赖组件拉取中 / Fetching dependencies...
+- 预计构建时间：2-5 分钟 / Estimated build time: 2-5 minutes
 
-构建完成后会在此通知您。" || true
+构建完成后会在此通知您。
+You will be notified here once the build is complete." || true
 
       - name: 解析 Issue 体提取构建参数
         id: parse
@@ -338,50 +340,57 @@ METAEOF
             DL_URL="https://github.com/${BINPKG_REPO}/raw/main/${ISO_DIR}/${ISO_FILE}"
             gh issue comment "$ISSUE_NUMBER" \
               --repo "$GITHUB_REPOSITORY" \
-              --body "## OPENOS ISO 构建完成
+              --body "## OPENOS ISO 构建完成 / Build Complete
 
-| 项目 | 值 |
+| 项目 / Item | 值 / Value |
 |------|-----|
-| 镜像名称 | ${ISO_NAME} |
-| 架构 | ${ARCH} |
-| 内核 | ${KERNEL} |
-| 组件集合 | ${{ steps.parse.outputs.comp_set }} |
-| 构建 ID | ${BUILD_ID} |
-| 过期日期 | ${EXPIRE_DATE} |
+| 镜像名称 / Image Name | ${ISO_NAME} |
+| 架构 / Architecture | ${ARCH} |
+| 内核 / Kernel | ${KERNEL} |
+| 组件集合 / Component Set | ${{ steps.parse.outputs.comp_set }} |
+| 构建 ID / Build ID | ${BUILD_ID} |
+| 过期日期 / Expiry Date | ${EXPIRE_DATE} |
 
-**下载链接**: [${ISO_FILE}](${DL_URL})
+**下载链接 / Download Link**: [${ISO_FILE}](${DL_URL})
 
-> 此文件将在 ${EXPIRE_DAYS} 天后（${EXPIRE_DATE}）自动从仓库删除。
+> 此文件将在 ${EXPIRE_DAYS} 天后（${EXPIRE_DATE}）自动失效。
+> This file will expire in ${EXPIRE_DAYS} days (${EXPIRE_DATE}).
 
 ---
 
-**请回复**：此镜像是否满足您的需求？请回复 **是** 关闭此 Issue，或回复 **否** 告诉我们有什么问题。"
+**请回复 / Please reply**：
+此镜像是否满足您的需求？请回复 **是** 关闭此 Issue，或回复 **否** 告诉我们有什么问题。
+Does this image meet your needs? Reply **yes** to close this issue, or **no** to tell us what's wrong."
           else
             DL_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
             gh issue comment "$ISSUE_NUMBER" \
               --repo "$GITHUB_REPOSITORY" \
-              --body "## OPENOS ISO 构建完成
+              --body "## OPENOS ISO 构建完成 / Build Complete
 
-| 项目 | 值 |
+| 项目 / Item | 值 / Value |
 |------|-----|
-| 镜像名称 | ${ISO_NAME} |
-| 架构 | ${ARCH} |
-| 内核 | ${KERNEL} |
-| 组件集合 | ${{ steps.parse.outputs.comp_set }} |
-| 构建 ID | ${BUILD_ID} |
-| 过期日期 | ${EXPIRE_DATE} |
+| 镜像名称 / Image Name | ${ISO_NAME} |
+| 架构 / Architecture | ${ARCH} |
+| 内核 / Kernel | ${KERNEL} |
+| 组件集合 / Component Set | ${{ steps.parse.outputs.comp_set }} |
+| 构建 ID / Build ID | ${BUILD_ID} |
+| 过期日期 / Expiry Date | ${EXPIRE_DATE} |
 
 **镜像已保存至 Actions 构建产物**（推送共享仓库失败），需登录 GitHub 后下载。
+**Image saved as Actions artifact** (push to shared repo failed). Please log in to GitHub to download.
 
-下载方式：
-1. 打开此构建运行页面：[${GITHUB_RUN_ID}](${DL_URL})
-2. 在 **Artifacts** 区域找到 \`${ISO_FILE}\` 点击下载
+下载方式 / Download steps：
+1. 打开此构建运行页面 / Open this build run: [${GITHUB_RUN_ID}](${DL_URL})
+2. 在 **Artifacts** 区域找到 \`${ISO_FILE}\` 点击下载 / Find \`${ISO_FILE}\` in the **Artifacts** section and click to download
 
 > 此产物将在 ${EXPIRE_DAYS} 天后自动过期。
+> This artifact will expire in ${EXPIRE_DAYS} days.
 
 ---
 
-**请回复**：此镜像是否满足您的需求？请回复 **是** 关闭此 Issue，或回复 **否** 告诉我们有什么问题。"
+**请回复 / Please reply**：
+此镜像是否满足您的需求？请回复 **是** 关闭此 Issue，或回复 **否** 告诉我们有什么问题。
+Does this image meet your needs? Reply **yes** to close this issue, or **no** to tell us what's wrong."
           fi
 
           gh issue edit "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" \
@@ -409,18 +418,20 @@ METAEOF
 
           gh issue comment "$ISSUE_NUMBER" \
             --repo "$GITHUB_REPOSITORY" \
-            --body "## 构建失败
+            --body "## 构建失败 / Build Failed
 
 很抱歉，ISO 构建过程中出现错误。请检查构建日志了解更多信息。
+Sorry, an error occurred during the ISO build. Please check the build log for details.
 
-[查看构建日志](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})
+[查看构建日志 / View Build Log](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})
 
-可能的原因：
-- 某个组件当前不可用（binpkg 缺失）
-- 构建环境依赖问题
-- 请求的参数不合法
+可能的原因 / Possible causes：
+- 某个组件当前不可用（binpkg 缺失）/ A component is currently unavailable (missing binpkg)
+- 构建环境依赖问题 / Build environment dependency issue
+- 请求的参数不合法 / Invalid request parameters
 
-请修正后重新提交 Issue。" || true
+请修正后重新提交 Issue。
+Please correct and resubmit the Issue." || true
 
           gh issue edit "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" \
             --remove-label "building-iso" \
@@ -431,23 +442,26 @@ METAEOF
             --title "[ISO-BUILD-FAIL] ${ISO_NAME} (${ARCH}/${KERNEL})" \
             --label "iso-failure" \
             --label "bug" \
-            --body "## ISO 构建失败报告
+            --body "## ISO 构建失败报告 / ISO Build Failure Report
 
 此 Issue 由自定义 ISO 构建流水线自动创建，用于追踪构建失败原因。
+This issue was automatically created by the custom ISO build pipeline to track the build failure.
 
-| 项目 | 值 |
+| 项目 / Item | 值 / Value |
 |------|-----|
-| 镜像名称 | ${ISO_NAME} |
-| 架构 | ${ARCH} |
-| 内核 | ${KERNEL} |
-| 构建 ID | ${BUILD_ID} |
-| 源 Issue | [#${ISSUE_NUMBER}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}) |
-| 构建日志 | [查看](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) |
+| 镜像名称 / Image Name | ${ISO_NAME} |
+| 架构 / Architecture | ${ARCH} |
+| 内核 / Kernel | ${KERNEL} |
+| 构建 ID / Build ID | ${BUILD_ID} |
+| 源 Issue / Source Issue | [#${ISSUE_NUMBER}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}) |
+| 构建日志 / Build Log | [查看 / View](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) |
 
-### 失败原因
+### 失败原因 / Failure Reason
 
 请维护者检查构建日志，确定失败原因并修复。
+Maintainers should check the build log to determine the cause and fix it.
 
-### 用户操作
+### 用户操作 / User Action
 
-用户可以修正参数后重新提交 [新的 ISO 构建请求](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/issues/new?template=custom-iso-build.yml)。" || true
+用户可以修正参数后重新提交 [新的 ISO 构建请求](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/issues/new?template=custom-iso-build.yml)。
+Users can correct the parameters and submit a [new ISO build request](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/issues/new?template=custom-iso-build.yml)。" || true
