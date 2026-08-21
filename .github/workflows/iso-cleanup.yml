@@ -1,0 +1,83 @@
+name: OPENOS ISO Cleanup
+
+# 每日扫描共享 binpkg 仓库中的 ISO 构建产物，
+# 删除所有已过期的 ISO 目录，自动清理过期文件。
+
+on:
+  schedule:
+    # 每天 UTC 00:00 运行
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      BINPKG_REPO: OPENOS-dev/OPENOS-BUILD-BINPKG
+
+    steps:
+      - name: 克隆共享仓库
+        env:
+          BINPKG_TOKEN: ${{ secrets.OPENOS_BINPKG_TOKEN }}
+        run: |
+          if [ -z "$BINPKG_TOKEN" ]; then
+            echo "::error::未配置 secrets.OPENOS_BINPKG_TOKEN，无法清理"
+            exit 1
+          fi
+          git clone --depth 1 \
+            "https://x-access-token:${BINPKG_TOKEN}@github.com/${BINPKG_REPO}.git" \
+            /tmp/binpkg-repo
+
+      - name: 扫描并删除过期 ISO
+        run: |
+          cd /tmp/binpkg-repo
+          EXPIRED_COUNT=0
+          DELETED_SIZE=0
+
+          for meta_file in bins/iso/*/META.json; do
+            [ -f "$meta_file" ] || continue
+
+            EXPIRE_DATE=$(python3 -c "import json; print(json.load(open('$meta_file')).get('expire_date', ''))")
+            ISO_NAME=$(python3 -c "import json; print(json.load(open('$meta_file')).get('iso_name', 'unknown'))")
+            BUILD_ID=$(python3 -c "import json; print(json.load(open('$meta_file')).get('build_id', 'unknown'))")
+
+            if [ -z "$EXPIRE_DATE" ]; then
+              echo "警告: $meta_file 缺少 expire_date，跳过"
+              continue
+            fi
+
+            TODAY=$(date -u +%Y-%m-%d)
+            if [ "$TODAY" \> "$EXPIRE_DATE" ] || [ "$TODAY" = "$EXPIRE_DATE" ]; then
+              ISO_DIR=$(dirname "$meta_file")
+              FILE_SIZE=$(du -sh "$ISO_DIR" 2>/dev/null | cut -f1)
+              echo "过期: $ISO_DIR (${ISO_NAME}/${BUILD_ID}) 过期于 ${EXPIRE_DATE}，大小 ${FILE_SIZE}"
+              rm -rf "$ISO_DIR"
+              EXPIRED_COUNT=$((EXPIRED_COUNT + 1))
+            else
+              echo "有效: $(dirname $meta_file) 过期于 ${EXPIRE_DATE}"
+            fi
+          done
+
+          echo "expired_count=$EXPIRED_COUNT" >> "$GITHUB_ENV"
+
+          if [ $EXPIRED_COUNT -eq 0 ]; then
+            echo "无过期 ISO，跳过推送"
+            echo "has_changes=false" >> "$GITHUB_ENV"
+          else
+            echo "has_changes=true" >> "$GITHUB_ENV"
+          fi
+
+      - name: 提交并推送清理结果
+        if: env.has_changes == 'true'
+        env:
+          BINPKG_TOKEN: ${{ secrets.OPENOS_BINPKG_TOKEN }}
+        run: |
+          cd /tmp/binpkg-repo
+          git config user.name "OPENOS CI"
+          git config user.email "ci@openos.dev"
+          git add -A
+          git commit -m "cleanup: 删除 ${{ env.expired_count }} 个过期 ISO"
+          git push -q origin main
+          echo "已清理 ${{ env.expired_count }} 个过期 ISO"

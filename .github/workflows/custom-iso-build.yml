@@ -1,8 +1,8 @@
 name: OPENOS Custom ISO Build
 
 # 用户通过 Issue 模板提交自定义 ISO 构建请求后，此工作流自动执行。
-# 构建产物以 Actions Artifact 形式保存，仅仓库成员可访问下载，
-# 超过过期时间后 Artifact 自动过期清除。
+# 构建产物推送到共享 binpkg 仓库 (OPENOS-BUILD-BINPKG)，
+# 提供原始文件下载链接，过期后由 iso-cleanup 工作流自动删除。
 
 on:
   issues:
@@ -22,6 +22,7 @@ jobs:
     env:
       ISSUE_NUMBER: ${{ github.event.issue.number }}
       ISSUE_TITLE: ${{ github.event.issue.title }}
+      BINPKG_REPO: OPENOS-dev/OPENOS-BUILD-BINPKG
 
     outputs:
       iso_name: ${{ steps.parse.outputs.iso_name }}
@@ -31,6 +32,7 @@ jobs:
       expire_days: ${{ steps.parse.outputs.expire_days }}
       build_id: ${{ steps.parse.outputs.build_id }}
       iso_file: ${{ steps.parse.outputs.iso_file }}
+      iso_dir: ${{ steps.parse.outputs.iso_dir }}
 
     steps:
       - name: 添加构建中标签
@@ -43,28 +45,21 @@ jobs:
       - name: 解析 Issue 体提取构建参数
         id: parse
         run: |
-          # 将 Issue body 写入文件（避免 shell 转义问题）
           echo 'BODY_START' > /tmp/issue-body.txt
           cat << 'BODYEOF' >> /tmp/issue-body.txt
           ${{ toJSON(github.event.issue.body) }}
           BODYEOF
           echo 'BODY_END' >> /tmp/issue-body.txt
 
-          # 提取实际 body 内容（去除前后标记行和 JSON 引号）
           python3 <<'PYEOF'
           import re, hashlib, json, os
 
           with open('/tmp/issue-body.txt') as f:
               text = f.read()
-
-          # 提取 BODY_START 和 BODY_END 之间的内容
           m = re.search(r'BODY_START\s*\n(.*)\n\s*BODY_END', text, re.DOTALL)
           body_raw = m.group(1).strip() if m else ''
-
-          # 去除 JSON 引号（toJSON 输出带引号）
           if body_raw.startswith('"') and body_raw.endswith('"'):
               body_raw = body_raw[1:-1]
-          # 转义还原
           body = body_raw.replace('\\n', '\n').replace('\\t', '\t').replace('\\"', '"')
 
           def get_field(pattern, text, default=''):
@@ -78,42 +73,33 @@ jobs:
           custom_comp = get_field(r'### 自定义组件列表\s*\n\s*([^#]*)', body, '')
           expire_days = get_field(r'### 下载过期时间[（(]天[）)]\s*\n\s*([^\n]+)', body, '30')
 
-          # 清理
           iso_name = re.sub(r'[^a-zA-Z0-9_-]', '_', iso_name)[:40]
           expire_days = re.sub(r'[^0-9]', '', expire_days)
-          if not expire_days or int(expire_days) <= 0:
-              expire_days = '30'
-          if int(expire_days) > 90:
-              expire_days = '90'
+          if not expire_days or int(expire_days) <= 0: expire_days = '30'
+          if int(expire_days) > 90: expire_days = '90'
 
-          # 内核分层提取 (取第一个单词)
           kernel_key = kernel.split()[0].lower()
 
-          # 组件集合
           comp_map = {
               'full': 'kernel glibc bash coreutils util-linux pacman systemd gcc apt liboak libopenrsa libvmapp oakctl openos-oak-seal openos-uname openos-securityd openos-settingsd openos-settings openos-calendar openos-welcome openos-run openos-oak opt OPENUI-desktop linux',
               'minimal': 'kernel glibc bash coreutils',
               'desktop': 'kernel glibc bash coreutils util-linux pacman systemd apt liboak libopenrsa oakctl openos-uname openos-securityd openos-settingsd openos-settings openos-calendar openos-welcome openos-run openos-oak opt OPENUI-desktop linux',
           }
-
           if comp_set.strip() == 'custom':
               comp_list = [c.strip() for c in custom_comp.strip().split('\n') if c.strip()]
               components = ' '.join(comp_list) if comp_list else 'kernel glibc bash coreutils'
           else:
               components = comp_map.get(comp_set.strip().lower(), comp_map['full'])
 
-          # 构建 ID = 名称 + 日期 + 哈希
           raw = f"{iso_name}-{arch}-{kernel_key}-{os.environ.get('ISSUE_NUMBER', '0')}"
           build_id = hashlib.sha256(raw.encode()).hexdigest()[:12]
 
-          # 过期日期
           from datetime import datetime, timedelta
           expire = (datetime.utcnow() + timedelta(days=int(expire_days))).strftime('%Y-%m-%d')
 
-          # ISO 文件名
           iso_file = f"openos-{iso_name}-{arch}-{kernel_key}-{build_id}.iso"
+          iso_dir  = f"bins/iso/{build_id}"
 
-          # 写入 GITHUB_OUTPUT
           with open(os.environ.get('GITHUB_OUTPUT', ''), 'a') as f:
               f.write(f"iso_name={iso_name}\n")
               f.write(f"arch={arch}\n")
@@ -122,6 +108,7 @@ jobs:
               f.write(f"expire_days={expire_days}\n")
               f.write(f"build_id={build_id}\n")
               f.write(f"iso_file={iso_file}\n")
+              f.write(f"iso_dir={iso_dir}\n")
               f.write(f"components={components}\n")
           PYEOF
         env:
@@ -160,96 +147,84 @@ jobs:
           ROOTFS_ARCHIVE="$IMAGE_DIR/${ARCH}-${KERNEL}-${BUILD_ID}.tar.zst"
 
           mkdir -p "$STAGE/iso-root" "$STAGE/iso-out"
-
-          # 解压 rootfs
           tar --zstd -xf "$ROOTFS_ARCHIVE" -C "$STAGE/iso-root"
-
-          # 创建 squashfs 压缩根文件系统
           sudo mksquashfs "$STAGE/iso-root" "$STAGE/iso-out/filesystem.squashfs" \
             -comp zstd -b 1M -no-exports -no-recovery
 
-          # 创建 ISO 目录结构
           ISO_DIR="$STAGE/iso-dir"
           mkdir -p "$ISO_DIR/boot/grub" "$ISO_DIR/live"
-
-          # 复制内核和 initrd (从 rootfs 中提取)
           cp "$STAGE/iso-root/boot/vmlinuz"* "$ISO_DIR/boot/vmlinuz" 2>/dev/null || true
           cp "$STAGE/iso-root/boot/initrd"* "$ISO_DIR/boot/initrd" 2>/dev/null || true
-
-          # 移动 squashfs 到 live 目录
           mv "$STAGE/iso-out/filesystem.squashfs" "$ISO_DIR/live/"
 
-          # GRUB 配置
           cat > "$ISO_DIR/boot/grub/grub.cfg" <<'GRUBEOF'
 set timeout=5
 set default=0
-
-menuentry "OPENOS Live (x86-64)" {
+menuentry "OPENOS Live" {
   linux /boot/vmlinuz boot=live toram findiso=/live/filesystem.squashfs quiet splash
   initrd /boot/initrd
 }
 GRUBEOF
 
-          # 生成 ISO (使用 grub-mkrescue)
           sudo grub-mkrescue -o "$IMAGE_DIR/$ISO_FILE" "$ISO_DIR" 2>/dev/null || \
-          xorriso -as mkisofs \
-            -iso-level 3 \
-            -full-iso9660-filenames \
-            -volid "OPENOS_LIVE" \
-            -eltorito-boot boot/grub/grub.cfg \
-            -no-emul-boot \
-            -boot-load-size 4 \
-            -boot-info-table \
-            -eltorito-catalog boot/grub/boot.cat \
-            -output "$IMAGE_DIR/$ISO_FILE" \
-            "$ISO_DIR"
+          xorriso -as mkisofs -iso-level 3 -full-iso9660-filenames \
+            -volid "OPENOS_LIVE" -output "$IMAGE_DIR/$ISO_FILE" "$ISO_DIR"
 
           ls -lah "$IMAGE_DIR/$ISO_FILE"
-          echo "ISO 构建完成: $IMAGE_DIR/$ISO_FILE"
 
-      - name: 上传 ISO 到临时文件托管（生成公开下载链接）
-        id: upload
+      - name: 推送到共享 binpkg 仓库
+        env:
+          BINPKG_TOKEN: ${{ secrets.OPENOS_BINPKG_TOKEN }}
         run: |
+          set -euo pipefail
+          if [ -z "$BINPKG_TOKEN" ]; then
+            echo "::warning::未配置 secrets.OPENOS_BINPKG_TOKEN，跳过推送"
+            echo "push_failed=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
           ARCH=${{ steps.parse.outputs.arch }}
+          BUILD_ID=${{ steps.parse.outputs.build_id }}
           ISO_FILE=${{ steps.parse.outputs.iso_file }}
-          EXPIRE_DAYS=${{ steps.parse.outputs.expire_days }}
+          ISO_DIR=${{ steps.parse.outputs.iso_dir }}
+          EXPIRE_DATE=${{ steps.parse.outputs.expire_date }}
+          ISO_NAME=${{ steps.parse.outputs.iso_name }}
           IMAGE_DIR="OPENOS_CORE/BUILD_SYSTEM/out/images"
-          ISO_PATH="$IMAGE_DIR/$ISO_FILE"
-          ISO_SIZE=$(stat -f%z "$ISO_PATH" 2>/dev/null || stat -c%s "$ISO_PATH" 2>/dev/null)
 
-          echo "ISO 文件大小: $(numfmt --to=iec $ISO_SIZE 2>/dev/null || echo "${ISO_SIZE} bytes")"
+          rm -rf /tmp/binpkg-repo
+          git clone --depth 1 \
+            "https://x-access-token:${BINPKG_TOKEN}@github.com/${BINPKG_REPO}.git" \
+            /tmp/binpkg-repo
 
-          DOWNLOAD_URL=""
-          # 尝试多个临时文件托管服务，直到成功
-          echo "尝试上传到 transfer.sh (最大 14天) ..."
-          URL=$(curl -s --max-time 300 --upload-file "$ISO_PATH" \
-            "https://transfer.sh/${ISO_FILE}" 2>/dev/null) && [ -n "$URL" ] && \
-            DOWNLOAD_URL="$URL" && echo "transfer.sh 成功: $URL"
+          cd /tmp/binpkg-repo
+          mkdir -p "$ISO_DIR"
 
-          if [ -z "$DOWNLOAD_URL" ]; then
-            echo "尝试上传到 temp.sh ..."
-            URL=$(curl -s --max-time 300 --upload-file "$ISO_PATH" \
-              "https://temp.sh/upload" 2>/dev/null | grep -oP 'https?://[^"<>]+' | head -1) && \
-              [ -n "$URL" ] && DOWNLOAD_URL="$URL" && echo "temp.sh 成功: $URL"
-          fi
+          # 复制 ISO 文件
+          cp "$IMAGE_DIR/$ISO_FILE" "$ISO_DIR/"
 
-          if [ -z "$DOWNLOAD_URL" ]; then
-            # 上传失败，回退到说明 Actions Artifact 方式
-            echo "所有临时文件托管服务上传失败，将使用 Actions Artifact"
-            echo "upload_failed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "upload_failed=false" >> "$GITHUB_OUTPUT"
-            echo "download_url=${DOWNLOAD_URL}" >> "$GITHUB_OUTPUT"
-          fi
+          # 写入元数据（用于过期清理）
+          cat > "$ISO_DIR/META.json" <<METAEOF
+          {
+            "build_id": "${BUILD_ID}",
+            "iso_name": "${ISO_NAME}",
+            "arch": "${ARCH}",
+            "kernel": "${{ steps.parse.outputs.kernel }}",
+            "expire_date": "${EXPIRE_DATE}",
+            "source_issue": ${{ github.event.issue.number }},
+            "source_repo": "${GITHUB_REPOSITORY}",
+            "build_run": "${GITHUB_RUN_ID}",
+            "created_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+METAEOF
 
-      - name: 上传 ISO 到 Actions Artifact（备选）
-        if: steps.upload.outputs.upload_failed == 'true' || failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.parse.outputs.iso_file }}
-          path: OPENOS_CORE/BUILD_SYSTEM/out/images/${{ steps.parse.outputs.iso_file }}
-          retention-days: ${{ steps.parse.outputs.expire_days }}
-          if-no-files-found: error
+          git config user.name "OPENOS CI"
+          git config user.email "ci@openos.dev"
+          git add -A
+          git commit -m "iso: ${ISO_NAME} ${ARCH} (${BUILD_ID})" || echo "no changes"
+          git push -q origin main
+
+          echo "ISO 已推送到共享仓库"
+          echo "push_failed=false" >> "$GITHUB_ENV"
 
       - name: 在 Issue 中回复构建结果
         env:
@@ -262,11 +237,11 @@ GRUBEOF
           EXPIRE_DATE=${{ steps.parse.outputs.expire_date }}
           EXPIRE_DAYS=${{ steps.parse.outputs.expire_days }}
           ISO_FILE=${{ steps.parse.outputs.iso_file }}
-          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-          DL_URL="${{ steps.upload.outputs.download_url }}"
+          ISO_DIR=${{ steps.parse.outputs.iso_dir }}
 
-          if [ -n "$DL_URL" ]; then
-            # 有公开下载链接
+          if [ "${push_failed:-true}" = "false" ]; then
+            # 推送成功，提供原始文件下载链接
+            DL_URL="https://github.com/${BINPKG_REPO}/raw/main/${ISO_DIR}/${ISO_FILE}"
             gh issue comment "$ISSUE_NUMBER" \
               --repo "$GITHUB_REPOSITORY" \
               --body "## OPENOS ISO 构建完成
@@ -281,10 +256,11 @@ GRUBEOF
 
 **下载链接**: [${ISO_FILE}](${DL_URL})
 
-> 此链接将在 ${EXPIRE_DAYS} 天后（${EXPIRE_DATE}）自动失效。
+> 此文件将在 ${EXPIRE_DAYS} 天后（${EXPIRE_DATE}）自动从仓库删除。
 > 如需重新构建，请提交新的 Issue。"
           else
-            # 无公开链接，使用 Artifact
+            # 推送失败，保存到 Actions Artifact
+            DL_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
             gh issue comment "$ISSUE_NUMBER" \
               --repo "$GITHUB_REPOSITORY" \
               --body "## OPENOS ISO 构建完成
@@ -297,21 +273,27 @@ GRUBEOF
 | 构建 ID | ${BUILD_ID} |
 | 过期日期 | ${EXPIRE_DATE} |
 
-**镜像已保存至 Actions 构建产物**，需登录 GitHub 后下载。
+**镜像已保存至 Actions 构建产物**（推送共享仓库失败），需登录 GitHub 后下载。
 
 下载方式：
-1. 打开此构建的运行页面：[${GITHUB_RUN_ID}](${RUN_URL})
-2. 在页面底部的 **Artifacts** 区域找到 \`${ISO_FILE}\`
-3. 点击即可下载
+1. 打开此构建运行页面：[${GITHUB_RUN_ID}](${DL_URL})
+2. 在 **Artifacts** 区域找到 \`${ISO_FILE}\` 点击下载
 
-> 此产物将在 ${EXPIRE_DAYS} 天后（${EXPIRE_DATE}）自动过期清除。
-> 如需重新构建，请提交新的 Issue。"
+> 此产物将在 ${EXPIRE_DAYS} 天后自动过期。"
           fi
 
-          # 移除构建中标签，添加构建完成标签
           gh issue edit "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" \
             --remove-label "building-iso" \
             --add-label "iso-built" || true
+
+      - name: 上传 ISO 到 Actions Artifact（备选）
+        if: env.push_failed == 'true' || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.parse.outputs.iso_file }}
+          path: OPENOS_CORE/BUILD_SYSTEM/out/images/${{ steps.parse.outputs.iso_file }}
+          retention-days: ${{ steps.parse.outputs.expire_days }}
+          if-no-files-found: error
 
       - name: 构建失败时通知并创建失败追踪 Issue
         if: failure()
@@ -323,7 +305,6 @@ GRUBEOF
           BUILD_ID=${{ steps.parse.outputs.build_id }}
           ISO_NAME=${{ steps.parse.outputs.iso_name }}
 
-          # 1. 在原 Issue 中回复失败信息
           gh issue comment "$ISSUE_NUMBER" \
             --repo "$GITHUB_REPOSITORY" \
             --body "## 构建失败
@@ -343,7 +324,6 @@ GRUBEOF
             --remove-label "building-iso" \
             --add-label "iso-failed" || true
 
-          # 2. 创建新的失败追踪 Issue
           gh issue create \
             --repo "$GITHUB_REPOSITORY" \
             --title "[ISO-BUILD-FAIL] ${ISO_NAME} (${ARCH}/${KERNEL})" \
