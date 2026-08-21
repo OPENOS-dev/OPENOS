@@ -33,6 +33,7 @@ jobs:
       build_id: ${{ steps.parse.outputs.build_id }}
       iso_file: ${{ steps.parse.outputs.iso_file }}
       iso_dir: ${{ steps.parse.outputs.iso_dir }}
+      comp_set: ${{ steps.parse.outputs.comp_set }}
 
     steps:
       - name: 添加构建中标签
@@ -69,7 +70,9 @@ jobs:
           iso_name  = get_field(r'### 镜像名称\s*\n\s*([^\n]+)', body, 'custom')
           arch      = get_field(r'### 目标架构\s*\n\s*([^\n]+)', body, 'x86-64')
           kernel    = get_field(r'### 内核分层\s*\n\s*([^\n]+)', body, 'base')
-          pkgs_raw  = get_field(r'### 额外 Pacman 包列表[（(]可选[）)]\s*\n\s*([^#]*)', body, '')
+          comp_set  = get_field(r'### 组件集合\s*\n\s*([^\n]+)', body, '基础包')
+          custom_raw = get_field(r'### 自定义额外包列表[（(]仅选择"自定义"时填写[）)]\s*\n\s*([^#]*)', body, '')
+          extra_raw = get_field(r'### 额外追加包列表[（(]可选，适用于所有模式[）)]\s*\n\s*([^#]*)', body, '')
           expire_days = get_field(r'### 下载过期时间[（(]天[）)]\s*\n\s*([^\n]+)', body, '30')
 
           iso_name = re.sub(r'[^a-zA-Z0-9_-]', '_', iso_name)[:40]
@@ -79,13 +82,36 @@ jobs:
 
           kernel_key = kernel.split()[0].lower()
 
-          # 解析 Pacman 包列表
-          pacman_pkgs = []
-          if pkgs_raw.strip():
-              for line in pkgs_raw.strip().split('\n'):
-                  pkg = line.strip()
-                  if pkg and not pkg.startswith('#'):
-                      pacman_pkgs.append(pkg)
+          # 组件集合 → 包列表映射
+          def parse_pkg_list(text):
+              pkgs = []
+              if text.strip():
+                  for line in text.strip().split('\n'):
+                      pkg = line.strip()
+                      if pkg and not pkg.startswith('#'):
+                          pkgs.append(pkg)
+              return pkgs
+
+          # 基础包 (日常软件)
+          BASE_APPS = "blender libreoffice-fresh"
+          # 完整包 (开发工具)
+          DEV_TOOLS = "code qemu nodejs docker"
+
+          # 根据组件集合计算最终包列表
+          custom_pkgs = parse_pkg_list(custom_raw)
+          extra_pkgs  = parse_pkg_list(extra_raw)
+
+          comp_key = comp_set.split()[0]  # 基础包 / 普通包 / 完整包 / 自定义
+          if comp_key == '基础包':
+              all_pkgs = extra_pkgs
+          elif comp_key == '普通包':
+              all_pkgs = parse_pkg_list(BASE_APPS) + extra_pkgs
+          elif comp_key == '完整包':
+              all_pkgs = parse_pkg_list(BASE_APPS) + parse_pkg_list(DEV_TOOLS) + extra_pkgs
+          elif comp_key == '自定义':
+              all_pkgs = custom_pkgs + extra_pkgs
+          else:
+              all_pkgs = extra_pkgs
 
           raw = f"{iso_name}-{arch}-{kernel_key}-{os.environ.get('ISSUE_NUMBER', '0')}"
           build_id = hashlib.sha256(raw.encode()).hexdigest()[:12]
@@ -105,7 +131,8 @@ jobs:
               f.write(f"build_id={build_id}\n")
               f.write(f"iso_file={iso_file}\n")
               f.write(f"iso_dir={iso_dir}\n")
-              f.write(f"pacman_pkgs={' '.join(pacman_pkgs)}\n")
+              f.write(f"pacman_pkgs={' '.join(all_pkgs)}\n")
+              f.write(f"comp_set={comp_key}\n")
           PYEOF
         env:
           BODY: ${{ github.event.issue.body }}
@@ -266,6 +293,7 @@ GRUBEOF
             "iso_name": "${ISO_NAME}",
             "arch": "${ARCH}",
             "kernel": "${{ steps.parse.outputs.kernel }}",
+            "comp_set": "${{ steps.parse.outputs.comp_set }}",
             "expire_date": "${EXPIRE_DATE}",
             "source_issue": ${{ github.event.issue.number }},
             "source_repo": "${GITHUB_REPOSITORY}",
@@ -306,6 +334,7 @@ METAEOF
 | 镜像名称 | ${ISO_NAME} |
 | 架构 | ${ARCH} |
 | 内核 | ${KERNEL} |
+| 组件集合 | ${{ steps.parse.outputs.comp_set }} |
 | 构建 ID | ${BUILD_ID} |
 | 过期日期 | ${EXPIRE_DATE} |
 
@@ -324,6 +353,7 @@ METAEOF
 | 镜像名称 | ${ISO_NAME} |
 | 架构 | ${ARCH} |
 | 内核 | ${KERNEL} |
+| 组件集合 | ${{ steps.parse.outputs.comp_set }} |
 | 构建 ID | ${BUILD_ID} |
 | 过期日期 | ${EXPIRE_DATE} |
 

@@ -47,16 +47,43 @@ body:
     validations:
       required: true
 
-  - type: textarea
-    id: pacman-packages
+  - type: dropdown
+    id: component-set
     attributes:
-      label: 额外 Pacman 包列表（可选）
-      description: 需要从 OPENOS 仓库安装的额外软件包，每行一个。系统会自动处理依赖关系。
+      label: 组件集合
+      description: 选择要包含的软件范围（系统基础包始终包含，不可去除）
+      options:
+        - 基础包 (系统核心 + pacman)
+        - 普通包 (基础包 + 日常软件)
+        - 完整包 (普通包 + 开发工具)
+        - 自定义 (专业用户手动指定)
+    validations:
+      required: true
+
+  - type: textarea
+    id: custom-packages
+    attributes:
+      label: 自定义额外包列表（仅选择"自定义"时填写）
+      description: 当上方选择"自定义"时，在此列出所有需要额外安装的 Pacman 包，每行一个
+      placeholder: |
+        blender
+        libreoffice-fresh
+        code
+        qemu
+        nodejs
+        docker
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra-packages
+    attributes:
+      label: 额外追加包列表（可选，适用于所有模式）
+      description: 在已选组件集合之上额外追加的 Pacman 包，每行一个。系统会自动处理依赖关系。
       placeholder: |
         neofetch
         htop
         git
-        vim
     validations:
       required: false
 
