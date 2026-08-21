@@ -302,11 +302,17 @@ GRUBEOF
             --remove-label "building-iso" \
             --add-label "iso-built" || true
 
-      - name: 构建失败时通知
+      - name: 构建失败时通知并创建失败追踪 Issue
         if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          ARCH=${{ steps.parse.outputs.arch }}
+          KERNEL=${{ steps.parse.outputs.kernel }}
+          BUILD_ID=${{ steps.parse.outputs.build_id }}
+          ISO_NAME=${{ steps.parse.outputs.iso_name }}
+
+          # 1. 在原 Issue 中回复失败信息
           gh issue comment "$ISSUE_NUMBER" \
             --repo "$GITHUB_REPOSITORY" \
             --body "## 构建失败
@@ -325,3 +331,30 @@ GRUBEOF
           gh issue edit "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" \
             --remove-label "building-iso" \
             --add-label "iso-failed" || true
+
+          # 2. 创建新的失败追踪 Issue
+          gh issue create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "[ISO-BUILD-FAIL] ${ISO_NAME} (${ARCH}/${KERNEL})" \
+            --label "iso-failure" \
+            --label "bug" \
+            --body "## ISO 构建失败报告
+
+此 Issue 由自定义 ISO 构建流水线自动创建，用于追踪构建失败原因。
+
+| 项目 | 值 |
+|------|-----|
+| 镜像名称 | ${ISO_NAME} |
+| 架构 | ${ARCH} |
+| 内核 | ${KERNEL} |
+| 构建 ID | ${BUILD_ID} |
+| 源 Issue | [#${ISSUE_NUMBER}](https://github.com/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}) |
+| 构建日志 | [查看](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) |
+
+### 失败原因
+
+请维护者检查构建日志，确定失败原因并修复。
+
+### 用户操作
+
+用户可以修正参数后重新提交 [新的 ISO 构建请求](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/issues/new?template=custom-iso-build.yml)。" || true
