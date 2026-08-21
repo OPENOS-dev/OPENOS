@@ -72,6 +72,8 @@ jobs:
           comp_set  = get_field(r'### 组件集合\s*\n\s*([^\n]+)', body, 'full')
           custom_comp = get_field(r'### 自定义组件列表\s*\n\s*([^#]*)', body, '')
           expire_days = get_field(r'### 下载过期时间[（(]天[）)]\s*\n\s*([^\n]+)', body, '30')
+          apt_repo = get_field(r'### APT 仓库地址[（(]可选[）)]\s*\n\s*([^\n]+)', body, '')
+          apt_pkgs_raw = get_field(r'### APT 额外包列表[（(]可选[）)]\s*\n\s*([^#]*)', body, '')
 
           iso_name = re.sub(r'[^a-zA-Z0-9_-]', '_', iso_name)[:40]
           expire_days = re.sub(r'[^0-9]', '', expire_days)
@@ -100,6 +102,18 @@ jobs:
           iso_file = f"openos-{iso_name}-{arch}-{kernel_key}-{build_id}.iso"
           iso_dir  = f"bins/iso/{build_id}"
 
+          # 解析 APT 包列表
+          apt_packages = []
+          if apt_pkgs_raw.strip():
+              for line in apt_pkgs_raw.strip().split('\n'):
+                  pkg = line.strip()
+                  if pkg and not pkg.startswith('#'):
+                      apt_packages.append(pkg)
+
+          # 默认 APT 仓库
+          if not apt_repo.strip():
+              apt_repo = 'https://apt.openos.dev/stable'
+
           with open(os.environ.get('GITHUB_OUTPUT', ''), 'a') as f:
               f.write(f"iso_name={iso_name}\n")
               f.write(f"arch={arch}\n")
@@ -110,6 +124,8 @@ jobs:
               f.write(f"iso_file={iso_file}\n")
               f.write(f"iso_dir={iso_dir}\n")
               f.write(f"components={components}\n")
+              f.write(f"apt_repo={apt_repo}\n")
+              f.write(f"apt_packages={' '.join(apt_packages)}\n")
           PYEOF
         env:
           BODY: ${{ github.event.issue.body }}
@@ -135,6 +151,79 @@ jobs:
           ./build_image.sh --arch=${{ steps.parse.outputs.arch }} \
             --kernel=${{ steps.parse.outputs.kernel }} \
             --out=${{ steps.parse.outputs.build_id }}
+
+      - name: 安装 APT 包到 rootfs（含自动依赖处理）
+        if: ${{ steps.parse.outputs.apt_packages != '' }}
+        run: |
+          set -euo pipefail
+          ARCH=${{ steps.parse.outputs.arch }}
+          KERNEL=${{ steps.parse.outputs.kernel }}
+          BUILD_ID=${{ steps.parse.outputs.build_id }}
+          APT_REPO="${{ steps.parse.outputs.apt_repo }}"
+          APT_PKGS="${{ steps.parse.outputs.apt_packages }}"
+          IMAGE_DIR="OPENOS_CORE/BUILD_SYSTEM/out/images"
+          ROOTFS_ARCHIVE="$IMAGE_DIR/${ARCH}-${KERNEL}-${BUILD_ID}.tar.zst"
+          ROOTFS_DIR="$RUNNER_TEMP/rootfs-apt"
+
+          echo "APT 仓库: $APT_REPO"
+          echo "APT 包: $APT_PKGS"
+          echo "目标架构: $ARCH"
+
+          # 映射架构名到 debootstrap 架构名
+          case "$ARCH" in
+            x86-64)  QEMU_ARCH=amd64;   DEB_ARCH=amd64;   QEMU_BIN=qemu-x86_64-static ;;
+            x86)     QEMU_ARCH=i386;    DEB_ARCH=i386;    QEMU_BIN=qemu-i386-static ;;
+            arm64)   QEMU_ARCH=aarch64; DEB_ARCH=arm64;   QEMU_BIN=qemu-aarch64-static ;;
+            arm32)   QEMU_ARCH=arm;     DEB_ARCH=armhf;   QEMU_BIN=qemu-arm-static ;;
+            loong64) QEMU_ARCH=loong64; DEB_ARCH=loong64; QEMU_BIN="" ;;
+          esac
+
+          rm -rf "$ROOTFS_DIR"
+          mkdir -p "$ROOTFS_DIR"
+          tar --zstd -xf "$ROOTFS_ARCHIVE" -C "$ROOTFS_DIR"
+
+          # 安装 qemu-user-static（跨架构 chroot 需要）
+          if [ "$ARCH" != "x86-64" ] && [ -n "${QEMU_BIN:-}" ]; then
+            sudo apt-get install -y -qq qemu-user-static
+            sudo cp "/usr/bin/$QEMU_BIN" "$ROOTFS_DIR/usr/bin/" || true
+          fi
+
+          # 配置 APT sources
+          sudo mkdir -p "$ROOTFS_DIR/etc/apt/sources.list.d"
+          echo "deb $APT_REPO $DEB_ARCH main" | \
+            sudo tee "$ROOTFS_DIR/etc/apt/sources.list.d/openos-extra.list"
+
+          # 复制 DNS 配置（使 chroot 内可访问网络）
+          sudo cp /etc/resolv.conf "$ROOTFS_DIR/etc/resolv.conf"
+
+          # 挂载必要文件系统
+          sudo mount --bind /dev "$ROOTFS_DIR/dev"
+          sudo mount --bind /proc "$ROOTFS_DIR/proc"
+          sudo mount --bind /sys "$ROOTFS_DIR/sys"
+
+          # 安装包
+          echo "正在安装 APT 包（含依赖自动解析）..."
+          sudo chroot "$ROOTFS_DIR" /bin/bash -c "
+            apt-get update -qq
+            apt-get install -y --no-install-recommends $APT_PKGS
+            apt-get clean
+            rm -rf /var/lib/apt/lists/*
+          " || {
+            echo "::warning::APT 包安装失败，部分包可能不可用"
+          }
+
+          # 清理
+          sudo umount "$ROOTFS_DIR/dev" "$ROOTFS_DIR/proc" "$ROOTFS_DIR/sys" 2>/dev/null || true
+          sudo rm -f "$ROOTFS_DIR/etc/resolv.conf"
+          if [ "$ARCH" != "x86-64" ] && [ -n "${QEMU_BIN:-}" ]; then
+            sudo rm -f "$ROOTFS_DIR/usr/bin/$QEMU_BIN"
+          fi
+
+          # 重新打包 rootfs
+          cd "$ROOTFS_DIR"
+          sudo tar --zstd -cf "$ROOTFS_ARCHIVE" .
+          sudo rm -rf "$ROOTFS_DIR"
+          echo "APT 包安装完成，rootfs 已更新"
 
       - name: 构建可启动 ISO
         run: |
