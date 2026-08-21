@@ -66,3 +66,27 @@
 [submodule "OPENOS_CORE/src/gcc"]
 	path = OPENOS_CORE/src/gcc
 	url = https://github.com/OPENOS-dev/OPENOS-gcc.git
+[submodule "OPENOS_CORE/src/openos-calc"]
+	path = OPENOS_CORE/src/openos-calc
+	url = https://github.com/OPENOS-dev/OPENOS-calc.git
+[submodule "OPENOS_CORE/src/openos-clock"]
+	path = OPENOS_CORE/src/openos-clock
+	url = https://github.com/OPENOS-dev/OPENOS-clock.git
+[submodule "OPENOS_CORE/src/openos-files"]
+	path = OPENOS_CORE/src/openos-files
+	url = https://github.com/OPENOS-dev/OPENOS-files.git
+[submodule "OPENOS_CORE/src/openos-images"]
+	path = OPENOS_CORE/src/openos-images
+	url = https://github.com/OPENOS-dev/OPENOS-images.git
+[submodule "OPENOS_CORE/src/openos-media"]
+	path = OPENOS_CORE/src/openos-media
+	url = https://github.com/OPENOS-dev/OPENOS-media.git
+[submodule "OPENOS_CORE/src/openos-notes"]
+	path = OPENOS_CORE/src/openos-notes
+	url = https://github.com/OPENOS-dev/OPENOS-notes.git
+[submodule "OPENOS_CORE/src/openos-terminal"]
+	path = OPENOS_CORE/src/openos-terminal
+	url = https://github.com/OPENOS-dev/OPENOS-terminal.git
+[submodule "OPENOS_CORE/src/openos-textedit"]
+	path = OPENOS_CORE/src/openos-textedit
+	url = https://github.com/OPENOS-dev/OPENOS-textedit.git
