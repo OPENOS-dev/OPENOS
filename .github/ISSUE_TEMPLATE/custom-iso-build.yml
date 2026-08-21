@@ -1,0 +1,98 @@
+name: 自定义 ISO 构建请求
+description: 提交自定义 OPENOS ISO 镜像构建请求，系统将自动构建并通过 GitHub Releases 提供下载
+title: "[ISO-BUILD] "
+labels: [custom-iso-build]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## OPENOS 自定义 ISO 构建
+
+        提交此表单后，系统将自动构建您指定的 OPENOS ISO 镜像，
+        构建完成后您将在此 Issue 中收到下载链接及过期时间。
+
+  - type: input
+    id: iso-name
+    attributes:
+      label: 镜像名称
+      description: 为此构建版本取一个简短的标识名称（仅允许字母、数字、连字符）
+      placeholder: "my-custom-build"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: arch
+    attributes:
+      label: 目标架构
+      description: 选择构建目标架构
+      options:
+        - x86-64
+        - x86
+        - arm64
+        - arm32
+        - loong64
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kernel
+    attributes:
+      label: 内核分层
+      description: 选择内核版本
+      options:
+        - base (Linux 6.12 LTS)
+        - base7 (Linux 7.1)
+        - preview (Linux 7.2-rc)
+        - classic (Linux 5.15 LTS)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component-set
+    attributes:
+      label: 组件集合
+      description: 选择要包含的组件范围
+      options:
+        - full (全部组件)
+        - minimal (kernel + glibc + bash + coreutils)
+        - desktop (包含桌面环境)
+        - custom (在下方自定义)
+    validations:
+      required: true
+
+  - type: textarea
+    id: custom-components
+    attributes:
+      label: 自定义组件列表
+      description: 当上方选择 `custom` 时，请在此列出需要包含的组件，每行一个。支持以下组件：
+        kernel, glibc, bash, coreutils, util-linux, pacman, systemd, gcc, apt,
+        liboak, libopenrsa, libvmapp, oakctl, openos-oak-seal, openos-uname,
+        openos-securityd, openos-settingsd, openos-settings, openos-calendar,
+        openos-welcome, openos-run, openos-oak, opt, OPENUI-desktop, linux
+      placeholder: |
+        kernel
+        glibc
+        bash
+        coreutils
+        pacman
+        OPENUI-desktop
+    validations:
+      required: false
+
+  - type: input
+    id: expire-days
+    attributes:
+      label: 下载过期时间（天）
+      description: 镜像下载链接的有效天数，超过此期限后链接将自动失效（默认 30 天，最长 90 天）
+      placeholder: "30"
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 构建备注（可选）
+      description: 任何其他说明或备注
+      placeholder: "例如：用于测试某某功能..."
+    validations:
+      required: false

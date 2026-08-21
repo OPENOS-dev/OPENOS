@@ -1,0 +1,126 @@
+name: OPENOS ISO Cleanup
+
+# 定期扫描 ISO 存储仓库，删除已过期的 Release。
+# 此工作流需要仓库管理员配置 OPENOS_ISO_TOKEN。
+#
+# 过期判断逻辑：
+#   - 解析 Release body 中的 "过期日期: YYYY-MM-DD" 行
+#   - 如果过期日期早于当前 UTC 时间，则删除该 Release 及其 Tag
+
+on:
+  schedule:
+    - cron: '0 0 * * *'        # 每日 UTC 00:00
+  workflow_dispatch:            # 允许手动触发
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    env:
+      ISO_REPO: OPENOS-dev/OPENOS-ISO-RELEASES
+
+    steps:
+      - name: 检查 Token 是否配置
+        id: check-token
+        env:
+          TOKEN: ${{ secrets.OPENOS_ISO_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "token_ok=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::OPENOS_ISO_TOKEN 未配置，跳过 ISO 清理"
+          else
+            echo "token_ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 列出所有 Release 并检查过期
+        if: steps.check-token.outputs.token_ok == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.OPENOS_ISO_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # 获取所有 Release
+          RELEASES=$(gh release list --repo "$ISO_REPO" --limit 100 --json tagName,isDraft,isPrerelease,createdAt)
+
+          if [ -z "$RELEASES" ] || [ "$RELEASES" = "[]" ]; then
+            echo "没有 Release，无需清理"
+            exit 0
+          fi
+
+          NOW=$(date -u +%s)
+          DELETED=0
+          KEPT=0
+
+          echo "$RELEASES" | python3 -c "
+import json, sys, re
+from datetime import datetime, timezone
+
+releases = json.load(sys.stdin)
+now = datetime.now(timezone.utc)
+deleted = 0
+kept = 0
+
+for r in releases:
+    tag = r.get('tagName', '')
+    # 只处理 iso- 前缀的 Release
+    if not tag.startswith('iso-'):
+        kept += 1
+        continue
+
+    # 获取 Release body
+    # 通过 gh release view 获取详情
+    print(f'CHECK:{tag}')
+
+# 第一遍输出所有 iso- 标签
+for r in releases:
+    tag = r.get('tagName', '')
+    if tag.startswith('iso-'):
+        print(f'TAG:{tag}')
+" > /tmp/iso-tags.txt
+
+          # 对每个 iso- 标签，获取详情并检查过期
+          while IFS= read -r line; do
+            case "$line" in
+              TAG:*)
+                tag="${line#TAG:}"
+                echo "检查 Release: $tag"
+
+                # 获取 Release body
+                body=$(gh release view "$tag" --repo "$ISO_REPO" --json body --jq '.body' 2>/dev/null || echo "")
+
+                # 提取过期日期
+                expire_match=$(echo "$body" | grep -oP '过期日期[：:]\s*\K\d{4}-\d{2}-\d{2}' || echo "")
+                if [ -z "$expire_match" ]; then
+                  echo "  - 未找到过期日期，跳过"
+                  continue
+                fi
+
+                # 转换为时间戳比较
+                expire_epoch=$(date -d "$expire_match" +%s 2>/dev/null || echo "0")
+                now_epoch=$(date -u +%s)
+
+                if [ "$expire_epoch" -le "$now_epoch" ]; then
+                  echo "  - 已过期 ($expire_match)，删除..."
+                  gh release delete "$tag" --repo "$ISO_REPO" --yes 2>/dev/null || true
+                  gh api -X DELETE "repos/$ISO_REPO/git/refs/tags/$tag" 2>/dev/null || true
+                  DELETED=$((DELETED + 1))
+                  echo "  - 已删除: $tag"
+                else
+                  echo "  - 未过期 ($expire_match)，保留"
+                  KEPT=$((KEPT + 1))
+                fi
+                ;;
+            esac
+          done < /tmp/iso-tags.txt
+
+          echo ""
+          echo "=== 清理完成 ==="
+          echo "已删除: $DELETED 个过期 Release"
+          echo "保留: $KEPT 个有效 Release"
+
+      - name: 清理结果摘要
+        if: always()
+        run: |
+          echo "## ISO 清理结果" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "扫描时间: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
+          echo "如果 OPENOS_ISO_TOKEN 未配置，此工作流将被跳过。" >> $GITHUB_STEP_SUMMARY
