@@ -35,7 +35,7 @@ OPENOS_CORE/
 │   ├── apt/ bash/ gcc/ glibc/ ...     # 系统组件 (Arch 基线)
 │   ├── openos-*/     #   独立 GUI app (settings/oak/opt/vmapp/calendar/run/welcome)
 │   ├── openos-securityd/ openos-settingsd/  # 系统服务
-│   ├── liboak/ libvmapp/ libopenrsa/  # 库
+│   ├── liboak/ libopenrsa/            # 库
 │   └── opt/ oakctl/ openos-oak-seal/  # 工具
 ```
 

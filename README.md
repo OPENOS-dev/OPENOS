@@ -59,7 +59,6 @@ OPENOS 由 `OPENOS-dev/OPENOS` 主仓库与若干子模块仓库组成，每个�
 | [OPENOS-OAK](https://github.com/OPENOS-dev/OPENOS-OAK) | OAK 安全基座（加密/密钥管理 app） | active |
 | [OPENOS-liboak](https://github.com/OPENOS-dev/OPENOS-liboak) | OAK 核心库 | active |
 | [OPENOS-libopenrsa](https://github.com/OPENOS-dev/OPENOS-libopenrsa) | OPEN RSA 握手库 | active |
-| [OPENOS-libvmapp](https://github.com/OPENOS-dev/OPENOS-libvmapp) | 轻量隔离 (vmapp) 库 | active |
 | [OPENOS-oakctl](https://github.com/OPENOS-dev/OPENOS-oakctl) | OAK 密钥管理 CLI | active |
 | [OPENOS-oak-seal](https://github.com/OPENOS-dev/OPENOS-oak-seal) | OAK-Seal 硬盘加密绑定 | active |
 | [OPENOS-securityd](https://github.com/OPENOS-dev/OPENOS-securityd) | 安全守护进程 | active |

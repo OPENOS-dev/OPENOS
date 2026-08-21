@@ -10,7 +10,6 @@
 
 - **内核实现**：`src/kernel/*/security/openos/vmapp.c`（四内核一致，
   `obj-$(CONFIG_SECURITY_OPENOS) += vmapp.o`）
-- **用户态 API**：`src/libvmapp/libvmapp.{h,c}` 提供 `vmappapi()`
 - **示例**：`src/vmapp_demo.c`（含测试用例）
 
 ## API

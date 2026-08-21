@@ -7,9 +7,6 @@
 [submodule "OPENOS_CORE/src/libopenrsa"]
 	path = OPENOS_CORE/src/libopenrsa
 	url = https://github.com/OPENOS-dev/OPENOS-libopenrsa.git
-[submodule "OPENOS_CORE/src/libvmapp"]
-	path = OPENOS_CORE/src/libvmapp
-	url = https://github.com/OPENOS-dev/OPENOS-libvmapp.git
 [submodule "OPENOS_CORE/src/oakctl"]
 	path = OPENOS_CORE/src/oakctl
 	url = https://github.com/OPENOS-dev/OPENOS-oakctl.git

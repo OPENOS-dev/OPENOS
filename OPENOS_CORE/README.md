@@ -40,7 +40,7 @@ OPENOS_CORE/
     ├── apt/ bash/ gcc/ glibc/ ...   # Arch 基线系统组件
     ├── openos-*/     # 独立 GUI App (settings/oak/opt/vmapp/calendar/run/welcome)
     ├── openos-securityd/ openos-settingsd/   # 系统服务
-    ├── liboak/ libvmapp/ libopenrsa/         # 库
+    ├── liboak/ libopenrsa/                   # 库
     └── opt/ oakctl/ openos-oak-seal/         # 工具
 ```
 
