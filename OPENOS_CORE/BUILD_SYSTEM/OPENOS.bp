@@ -112,13 +112,6 @@ library_module {
 
 // ---- 系统服务 ----
 service_module {
-    name: "openos-securityd",
-    src: "src/openos-securityd",
-    type: "c-bin",
-    deps: ["libsodium"],
-}
-
-service_module {
     name: "openos-settingsd",
     src: "src/openos-settingsd",
     type: "c-bin",

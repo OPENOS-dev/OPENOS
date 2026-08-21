@@ -31,9 +31,7 @@
 [submodule "OPENOS_CORE/src/openos-settingsd"]
 	path = OPENOS_CORE/src/openos-settingsd
 	url = https://github.com/OPENOS-dev/OPENOS-settingsd.git
-[submodule "OPENOS_CORE/src/openos-securityd"]
-	path = OPENOS_CORE/src/openos-securityd
-	url = https://github.com/OPENOS-dev/OPENOS-securityd.git
+
 [submodule "OPENOS_CORE/src/openos-run"]
 	path = OPENOS_CORE/src/openos-run
 	url = https://github.com/OPENOS-dev/OPENOS-run.git
@@ -49,9 +47,7 @@
 [submodule "OPENOS_CORE/src/linux"]
 	path = OPENOS_CORE/src/linux
 	url = https://github.com/OPENOS-dev/OPENOS-linux.git
-[submodule "OPENOS_CORE/src/apt"]
-	path = OPENOS_CORE/src/apt
-	url = https://github.com/OPENOS-dev/OPENOS-apt.git
+
 [submodule "OPENOS_CORE/src/pacman"]
 	path = OPENOS_CORE/src/pacman
 	url = https://github.com/OPENOS-dev/OPENOS-pacman.git

@@ -23,9 +23,9 @@ BINPKG_URL="https://github.com/OPENOS-dev/OPENOS-BUILD-BINPKG.git"
 BINPKG_DIR="$OUT_DIR/binpkg-fetch"
 
 # 全部基础组件 (kernel 特殊处理; gcc/systemd 暂为预留空包仍拉取)
-COMPONENTS="kernel glibc bash coreutils util-linux pacman systemd gcc apt \
+COMPONENTS="kernel glibc bash coreutils util-linux pacman systemd gcc \
   liboak libopenrsa libvmapp oakctl openos-oak-seal openos-uname \
-  openos-securityd openos-settingsd openos-settings openos-calendar \
+  openos-settingsd openos-settings openos-calendar \
   openos-welcome openos-run openos-oak opt OPENUI-desktop linux"
 
 main() {

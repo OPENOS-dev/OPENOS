@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     permissions:
-      issues: write         # 回复/操作 Issue 需要
+      issues: write
 
     env:
       ISSUE_NUMBER: ${{ github.event.issue.number }}
@@ -69,11 +69,8 @@ jobs:
           iso_name  = get_field(r'### 镜像名称\s*\n\s*([^\n]+)', body, 'custom')
           arch      = get_field(r'### 目标架构\s*\n\s*([^\n]+)', body, 'x86-64')
           kernel    = get_field(r'### 内核分层\s*\n\s*([^\n]+)', body, 'base')
-          comp_set  = get_field(r'### 组件集合\s*\n\s*([^\n]+)', body, 'full')
-          custom_comp = get_field(r'### 自定义组件列表\s*\n\s*([^#]*)', body, '')
+          pkgs_raw  = get_field(r'### 额外 Pacman 包列表[（(]可选[）)]\s*\n\s*([^#]*)', body, '')
           expire_days = get_field(r'### 下载过期时间[（(]天[）)]\s*\n\s*([^\n]+)', body, '30')
-          apt_repo = get_field(r'### APT 仓库地址[（(]可选[）)]\s*\n\s*([^\n]+)', body, '')
-          apt_pkgs_raw = get_field(r'### APT 额外包列表[（(]可选[）)]\s*\n\s*([^#]*)', body, '')
 
           iso_name = re.sub(r'[^a-zA-Z0-9_-]', '_', iso_name)[:40]
           expire_days = re.sub(r'[^0-9]', '', expire_days)
@@ -82,16 +79,13 @@ jobs:
 
           kernel_key = kernel.split()[0].lower()
 
-          comp_map = {
-              'full': 'kernel glibc bash coreutils util-linux pacman systemd gcc apt liboak libopenrsa libvmapp oakctl openos-oak-seal openos-uname openos-securityd openos-settingsd openos-settings openos-calendar openos-welcome openos-run openos-oak opt OPENUI-desktop linux',
-              'minimal': 'kernel glibc bash coreutils',
-              'desktop': 'kernel glibc bash coreutils util-linux pacman systemd apt liboak libopenrsa oakctl openos-uname openos-securityd openos-settingsd openos-settings openos-calendar openos-welcome openos-run openos-oak opt OPENUI-desktop linux',
-          }
-          if comp_set.strip() == 'custom':
-              comp_list = [c.strip() for c in custom_comp.strip().split('\n') if c.strip()]
-              components = ' '.join(comp_list) if comp_list else 'kernel glibc bash coreutils'
-          else:
-              components = comp_map.get(comp_set.strip().lower(), comp_map['full'])
+          # 解析 Pacman 包列表
+          pacman_pkgs = []
+          if pkgs_raw.strip():
+              for line in pkgs_raw.strip().split('\n'):
+                  pkg = line.strip()
+                  if pkg and not pkg.startswith('#'):
+                      pacman_pkgs.append(pkg)
 
           raw = f"{iso_name}-{arch}-{kernel_key}-{os.environ.get('ISSUE_NUMBER', '0')}"
           build_id = hashlib.sha256(raw.encode()).hexdigest()[:12]
@@ -102,18 +96,6 @@ jobs:
           iso_file = f"openos-{iso_name}-{arch}-{kernel_key}-{build_id}.iso"
           iso_dir  = f"bins/iso/{build_id}"
 
-          # 解析 APT 包列表
-          apt_packages = []
-          if apt_pkgs_raw.strip():
-              for line in apt_pkgs_raw.strip().split('\n'):
-                  pkg = line.strip()
-                  if pkg and not pkg.startswith('#'):
-                      apt_packages.append(pkg)
-
-          # 默认 APT 仓库
-          if not apt_repo.strip():
-              apt_repo = 'https://apt.openos.dev/stable'
-
           with open(os.environ.get('GITHUB_OUTPUT', ''), 'a') as f:
               f.write(f"iso_name={iso_name}\n")
               f.write(f"arch={arch}\n")
@@ -123,9 +105,7 @@ jobs:
               f.write(f"build_id={build_id}\n")
               f.write(f"iso_file={iso_file}\n")
               f.write(f"iso_dir={iso_dir}\n")
-              f.write(f"components={components}\n")
-              f.write(f"apt_repo={apt_repo}\n")
-              f.write(f"apt_packages={' '.join(apt_packages)}\n")
+              f.write(f"pacman_pkgs={' '.join(pacman_pkgs)}\n")
           PYEOF
         env:
           BODY: ${{ github.event.issue.body }}
@@ -145,55 +125,48 @@ jobs:
           chmod +x fetch_binpkgs.sh build_image.sh
           ./fetch_binpkgs.sh --arch=${{ steps.parse.outputs.arch }} --kernel=${{ steps.parse.outputs.kernel }}
 
-      - name: 组装 rootfs
+      - name: 组装基础 rootfs
         run: |
           cd OPENOS_CORE/BUILD_SYSTEM
           ./build_image.sh --arch=${{ steps.parse.outputs.arch }} \
             --kernel=${{ steps.parse.outputs.kernel }} \
             --out=${{ steps.parse.outputs.build_id }}
 
-      - name: 安装 APT 包到 rootfs（含自动依赖处理）
-        if: ${{ steps.parse.outputs.apt_packages != '' }}
+      - name: 安装额外 Pacman 包到 rootfs（含自动依赖处理）
+        if: ${{ steps.parse.outputs.pacman_pkgs != '' }}
         run: |
           set -euo pipefail
           ARCH=${{ steps.parse.outputs.arch }}
           KERNEL=${{ steps.parse.outputs.kernel }}
           BUILD_ID=${{ steps.parse.outputs.build_id }}
-          APT_REPO="${{ steps.parse.outputs.apt_repo }}"
-          APT_PKGS="${{ steps.parse.outputs.apt_packages }}"
+          PACMAN_PKGS="${{ steps.parse.outputs.pacman_pkgs }}"
           IMAGE_DIR="OPENOS_CORE/BUILD_SYSTEM/out/images"
           ROOTFS_ARCHIVE="$IMAGE_DIR/${ARCH}-${KERNEL}-${BUILD_ID}.tar.zst"
-          ROOTFS_DIR="$RUNNER_TEMP/rootfs-apt"
+          ROOTFS_DIR="$RUNNER_TEMP/rootfs-pacman"
 
-          echo "APT 仓库: $APT_REPO"
-          echo "APT 包: $APT_PKGS"
+          echo "额外 Pacman 包: $PACMAN_PKGS"
           echo "目标架构: $ARCH"
 
-          # 映射架构名到 debootstrap 架构名
+          # 映射架构名到 qemu 架构名
           case "$ARCH" in
-            x86-64)  QEMU_ARCH=amd64;   DEB_ARCH=amd64;   QEMU_BIN=qemu-x86_64-static ;;
-            x86)     QEMU_ARCH=i386;    DEB_ARCH=i386;    QEMU_BIN=qemu-i386-static ;;
-            arm64)   QEMU_ARCH=aarch64; DEB_ARCH=arm64;   QEMU_BIN=qemu-aarch64-static ;;
-            arm32)   QEMU_ARCH=arm;     DEB_ARCH=armhf;   QEMU_BIN=qemu-arm-static ;;
-            loong64) QEMU_ARCH=loong64; DEB_ARCH=loong64; QEMU_BIN="" ;;
+            x86-64)  QEMU_BIN="" ;;
+            x86)     QEMU_BIN=qemu-i386-static ;;
+            arm64)   QEMU_BIN=qemu-aarch64-static ;;
+            arm32)   QEMU_BIN=qemu-arm-static ;;
+            loong64) QEMU_BIN="" ;;
           esac
 
           rm -rf "$ROOTFS_DIR"
           mkdir -p "$ROOTFS_DIR"
           tar --zstd -xf "$ROOTFS_ARCHIVE" -C "$ROOTFS_DIR"
 
-          # 安装 qemu-user-static（跨架构 chroot 需要）
-          if [ "$ARCH" != "x86-64" ] && [ -n "${QEMU_BIN:-}" ]; then
+          # 跨架构 chroot 需要 qemu-user-static
+          if [ -n "${QEMU_BIN:-}" ]; then
             sudo apt-get install -y -qq qemu-user-static
             sudo cp "/usr/bin/$QEMU_BIN" "$ROOTFS_DIR/usr/bin/" || true
           fi
 
-          # 配置 APT sources
-          sudo mkdir -p "$ROOTFS_DIR/etc/apt/sources.list.d"
-          echo "deb $APT_REPO $DEB_ARCH main" | \
-            sudo tee "$ROOTFS_DIR/etc/apt/sources.list.d/openos-extra.list"
-
-          # 复制 DNS 配置（使 chroot 内可访问网络）
+          # 复制 DNS 配置
           sudo cp /etc/resolv.conf "$ROOTFS_DIR/etc/resolv.conf"
 
           # 挂载必要文件系统
@@ -201,21 +174,19 @@ jobs:
           sudo mount --bind /proc "$ROOTFS_DIR/proc"
           sudo mount --bind /sys "$ROOTFS_DIR/sys"
 
-          # 安装包
-          echo "正在安装 APT 包（含依赖自动解析）..."
+          # 安装额外包
+          echo "正在安装额外 Pacman 包..."
           sudo chroot "$ROOTFS_DIR" /bin/bash -c "
-            apt-get update -qq
-            apt-get install -y --no-install-recommends $APT_PKGS
-            apt-get clean
-            rm -rf /var/lib/apt/lists/*
+            pacman -Sy --noconfirm $PACMAN_PKGS
+            pacman -Scc --noconfirm
           " || {
-            echo "::warning::APT 包安装失败，部分包可能不可用"
+            echo "::warning::Pacman 包安装失败，部分包可能不可用"
           }
 
           # 清理
           sudo umount "$ROOTFS_DIR/dev" "$ROOTFS_DIR/proc" "$ROOTFS_DIR/sys" 2>/dev/null || true
           sudo rm -f "$ROOTFS_DIR/etc/resolv.conf"
-          if [ "$ARCH" != "x86-64" ] && [ -n "${QEMU_BIN:-}" ]; then
+          if [ -n "${QEMU_BIN:-}" ]; then
             sudo rm -f "$ROOTFS_DIR/usr/bin/$QEMU_BIN"
           fi
 
@@ -223,7 +194,7 @@ jobs:
           cd "$ROOTFS_DIR"
           sudo tar --zstd -cf "$ROOTFS_ARCHIVE" .
           sudo rm -rf "$ROOTFS_DIR"
-          echo "APT 包安装完成，rootfs 已更新"
+          echo "额外 Pacman 包安装完成，rootfs 已更新"
 
       - name: 构建可启动 ISO
         run: |
@@ -287,11 +258,8 @@ GRUBEOF
 
           cd /tmp/binpkg-repo
           mkdir -p "$ISO_DIR"
-
-          # 复制 ISO 文件
           cp "$IMAGE_DIR/$ISO_FILE" "$ISO_DIR/"
 
-          # 写入元数据（用于过期清理）
           cat > "$ISO_DIR/META.json" <<METAEOF
           {
             "build_id": "${BUILD_ID}",
@@ -311,7 +279,6 @@ METAEOF
           git add -A
           git commit -m "iso: ${ISO_NAME} ${ARCH} (${BUILD_ID})" || echo "no changes"
           git push -q origin main
-
           echo "ISO 已推送到共享仓库"
           echo "push_failed=false" >> "$GITHUB_ENV"
 
@@ -329,7 +296,6 @@ METAEOF
           ISO_DIR=${{ steps.parse.outputs.iso_dir }}
 
           if [ "${push_failed:-true}" = "false" ]; then
-            # 推送成功，提供原始文件下载链接
             DL_URL="https://github.com/${BINPKG_REPO}/raw/main/${ISO_DIR}/${ISO_FILE}"
             gh issue comment "$ISSUE_NUMBER" \
               --repo "$GITHUB_REPOSITORY" \
@@ -348,7 +314,6 @@ METAEOF
 > 此文件将在 ${EXPIRE_DAYS} 天后（${EXPIRE_DATE}）自动从仓库删除。
 > 如需重新构建，请提交新的 Issue。"
           else
-            # 推送失败，保存到 Actions Artifact
             DL_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
             gh issue comment "$ISSUE_NUMBER" \
               --repo "$GITHUB_REPOSITORY" \

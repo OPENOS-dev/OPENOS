@@ -1,5 +1,5 @@
 name: 自定义 ISO 构建请求
-description: 提交自定义 OPENOS ISO 镜像构建请求，系统将自动构建并通过 GitHub Releases 提供下载
+description: 提交自定义 OPENOS ISO 镜像构建请求，系统将自动构建并提供下载链接
 title: "[ISO-BUILD] "
 labels: [custom-iso-build]
 body:
@@ -47,35 +47,16 @@ body:
     validations:
       required: true
 
-  - type: dropdown
-    id: component-set
-    attributes:
-      label: 组件集合
-      description: 选择要包含的组件范围
-      options:
-        - full (全部组件)
-        - minimal (kernel + glibc + bash + coreutils)
-        - desktop (包含桌面环境)
-        - custom (在下方自定义)
-    validations:
-      required: true
-
   - type: textarea
-    id: custom-components
+    id: pacman-packages
     attributes:
-      label: 自定义组件列表
-      description: 当上方选择 `custom` 时，请在此列出需要包含的组件，每行一个。支持以下组件：
-        kernel, glibc, bash, coreutils, util-linux, pacman, systemd, gcc, apt,
-        liboak, libopenrsa, libvmapp, oakctl, openos-oak-seal, openos-uname,
-        openos-securityd, openos-settingsd, openos-settings, openos-calendar,
-        openos-welcome, openos-run, openos-oak, opt, OPENUI-desktop, linux
+      label: 额外 Pacman 包列表（可选）
+      description: 需要从 OPENOS 仓库安装的额外软件包，每行一个。系统会自动处理依赖关系。
       placeholder: |
-        kernel
-        glibc
-        bash
-        coreutils
-        pacman
-        OPENUI-desktop
+        neofetch
+        htop
+        git
+        vim
     validations:
       required: false
 
@@ -85,29 +66,6 @@ body:
       label: 下载过期时间（天）
       description: 镜像下载链接的有效天数，超过此期限后链接将自动失效（默认 30 天，最长 90 天）
       placeholder: "30"
-    validations:
-      required: false
-
-  - type: input
-    id: apt-repo
-    attributes:
-      label: APT 仓库地址（可选）
-      description: 用于安装额外软件包的 APT 仓库源地址
-      placeholder: "https://apt.openos.dev/stable"
-    validations:
-      required: false
-
-  - type: textarea
-    id: apt-packages
-    attributes:
-      label: APT 额外包列表（可选）
-      description: 需要从 APT 仓库安装的额外软件包，每行一个。系统会自动处理依赖关系。
-      placeholder: |
-        neofetch
-        htop
-        git
-        vim
-        openssh-server
     validations:
       required: false
 
