@@ -172,13 +172,6 @@ app_module {
 }
 
 app_module {
-    name: "openos-vmapp",
-    src: "src/openos-vmapp",
-    type: "qt6-qml",
-    deps: ["libvmapp"],
-}
-
-app_module {
     name: "openos-calendar",
     src: "src/openos-calendar",
     type: "qt6-qml",
