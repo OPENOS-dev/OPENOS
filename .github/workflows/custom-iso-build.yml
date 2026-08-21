@@ -207,7 +207,43 @@ GRUBEOF
           ls -lah "$IMAGE_DIR/$ISO_FILE"
           echo "ISO 构建完成: $IMAGE_DIR/$ISO_FILE"
 
-      - name: 上传 ISO 到构建产物（私有，自动过期）
+      - name: 上传 ISO 到临时文件托管（生成公开下载链接）
+        id: upload
+        run: |
+          ARCH=${{ steps.parse.outputs.arch }}
+          ISO_FILE=${{ steps.parse.outputs.iso_file }}
+          EXPIRE_DAYS=${{ steps.parse.outputs.expire_days }}
+          IMAGE_DIR="OPENOS_CORE/BUILD_SYSTEM/out/images"
+          ISO_PATH="$IMAGE_DIR/$ISO_FILE"
+          ISO_SIZE=$(stat -f%z "$ISO_PATH" 2>/dev/null || stat -c%s "$ISO_PATH" 2>/dev/null)
+
+          echo "ISO 文件大小: $(numfmt --to=iec $ISO_SIZE 2>/dev/null || echo "${ISO_SIZE} bytes")"
+
+          DOWNLOAD_URL=""
+          # 尝试多个临时文件托管服务，直到成功
+          echo "尝试上传到 transfer.sh (最大 14天) ..."
+          URL=$(curl -s --max-time 300 --upload-file "$ISO_PATH" \
+            "https://transfer.sh/${ISO_FILE}" 2>/dev/null) && [ -n "$URL" ] && \
+            DOWNLOAD_URL="$URL" && echo "transfer.sh 成功: $URL"
+
+          if [ -z "$DOWNLOAD_URL" ]; then
+            echo "尝试上传到 temp.sh ..."
+            URL=$(curl -s --max-time 300 --upload-file "$ISO_PATH" \
+              "https://temp.sh/upload" 2>/dev/null | grep -oP 'https?://[^"<>]+' | head -1) && \
+              [ -n "$URL" ] && DOWNLOAD_URL="$URL" && echo "temp.sh 成功: $URL"
+          fi
+
+          if [ -z "$DOWNLOAD_URL" ]; then
+            # 上传失败，回退到说明 Actions Artifact 方式
+            echo "所有临时文件托管服务上传失败，将使用 Actions Artifact"
+            echo "upload_failed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "upload_failed=false" >> "$GITHUB_OUTPUT"
+            echo "download_url=${DOWNLOAD_URL}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 上传 ISO 到 Actions Artifact（备选）
+        if: steps.upload.outputs.upload_failed == 'true' || failure()
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.parse.outputs.iso_file }}
@@ -227,10 +263,13 @@ GRUBEOF
           EXPIRE_DAYS=${{ steps.parse.outputs.expire_days }}
           ISO_FILE=${{ steps.parse.outputs.iso_file }}
           RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          DL_URL="${{ steps.upload.outputs.download_url }}"
 
-          gh issue comment "$ISSUE_NUMBER" \
-            --repo "$GITHUB_REPOSITORY" \
-            --body "## OPENOS ISO 构建完成
+          if [ -n "$DL_URL" ]; then
+            # 有公开下载链接
+            gh issue comment "$ISSUE_NUMBER" \
+              --repo "$GITHUB_REPOSITORY" \
+              --body "## OPENOS ISO 构建完成
 
 | 项目 | 值 |
 |------|-----|
@@ -240,7 +279,25 @@ GRUBEOF
 | 构建 ID | ${BUILD_ID} |
 | 过期日期 | ${EXPIRE_DATE} |
 
-**镜像已保存至构建产物（Actions Artifact）**，仅仓库成员可下载。
+**下载链接**: [${ISO_FILE}](${DL_URL})
+
+> 此链接将在 ${EXPIRE_DAYS} 天后（${EXPIRE_DATE}）自动失效。
+> 如需重新构建，请提交新的 Issue。"
+          else
+            # 无公开链接，使用 Artifact
+            gh issue comment "$ISSUE_NUMBER" \
+              --repo "$GITHUB_REPOSITORY" \
+              --body "## OPENOS ISO 构建完成
+
+| 项目 | 值 |
+|------|-----|
+| 镜像名称 | ${ISO_NAME} |
+| 架构 | ${ARCH} |
+| 内核 | ${KERNEL} |
+| 构建 ID | ${BUILD_ID} |
+| 过期日期 | ${EXPIRE_DATE} |
+
+**镜像已保存至 Actions 构建产物**，需登录 GitHub 后下载。
 
 下载方式：
 1. 打开此构建的运行页面：[${GITHUB_RUN_ID}](${RUN_URL})
@@ -249,6 +306,7 @@ GRUBEOF
 
 > 此产物将在 ${EXPIRE_DAYS} 天后（${EXPIRE_DATE}）自动过期清除。
 > 如需重新构建，请提交新的 Issue。"
+          fi
 
           # 移除构建中标签，添加构建完成标签
           gh issue edit "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" \
