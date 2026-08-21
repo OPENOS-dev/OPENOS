@@ -1,0 +1,64 @@
+name: 功能请求
+description: 提交新功能或改进建议
+title: "[FEATURE] "
+labels: [feature-request]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 功能请求
+
+        感谢您为 OPENOS 提出改进建议！请详细描述您希望的功能。
+
+  - type: input
+    id: component
+    attributes:
+      label: 相关组件
+      description: 该功能涉及哪个组件？（如内核、桌面环境、某个 App、构建系统等）
+      placeholder: "例如：openos-terminal、OPENUI-desktop、构建系统"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 解决的问题
+      description: 描述您遇到什么问题或当前缺少什么功能，为什么需要这个功能
+      placeholder: "当...时，我希望能...，因为..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: 期望的方案
+      description: 描述您期望的功能表现或实现方式，越详细越好
+      placeholder: "我希望新增一个功能，能够..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 替代方案（可选）
+      description: 有没有其他方式可以解决您的问题？
+      placeholder: "我尝试过...，但..."
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: 影响范围
+      description: 该功能的影响范围
+      options:
+        - 组件内部（仅影响单个 App/模块）
+        - 跨组件（涉及多个模块交互）
+        - 系统级（影响整个系统架构）
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 补充信息（可选）
+      description: 截图、参考实现、文档链接等
+      placeholder: "可以参考 XXX 项目的实现方式..."
