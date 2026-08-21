@@ -8,6 +8,8 @@
 
 set -euo pipefail
 BUILD_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# common.sh 的 STAMP_DIR 需要 OPENOS_ARCH 有值
+OPENOS_ARCH="${OPENOS_ARCH:-}"
 # shellcheck source=config.sh
 . "$BUILD_ROOT/config.sh"
 # shellcheck source=common.sh
@@ -17,7 +19,7 @@ main() {
   local arch="" kname="${OPENOS_KERNEL_DEFAULT}" imgname="rootfs"
   for a in "$@"; do
     case "$a" in
-      --arch=*) arch="${a#*=}" ;;
+      --arch=*) arch="${a#*=}" ; OPENOS_ARCH="$arch" ;;
       --kernel=*) kname="${a#*=}" ;;
       --out=*) imgname="${a#*=}" ;;
       *) die "未知参数: $a" ;;
