@@ -1,8 +1,8 @@
 name: OPENOS Custom ISO Build
 
 # 用户通过 Issue 模板提交自定义 ISO 构建请求后，此工作流自动执行。
-# 构建产物上传至 OPENOS-ISO-RELEASES 仓库的 GitHub Releases，
-# 超过过期时间后由 iso-cleanup 工作流自动清理。
+# 构建产物以 Actions Artifact 形式保存，仅仓库成员可访问下载，
+# 超过过期时间后 Artifact 自动过期清除。
 
 on:
   issues:
@@ -16,18 +16,19 @@ jobs:
       startsWith(github.event.issue.title, '[ISO-BUILD]')
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    permissions:
+      issues: write         # 回复/操作 Issue 需要
 
     env:
       ISSUE_NUMBER: ${{ github.event.issue.number }}
       ISSUE_TITLE: ${{ github.event.issue.title }}
-      ISO_REPO: OPENOS-dev/OPENOS-ISO-RELEASES
-      ISO_TOKEN: ${{ secrets.OPENOS_ISO_TOKEN }}
 
     outputs:
       iso_name: ${{ steps.parse.outputs.iso_name }}
       arch: ${{ steps.parse.outputs.arch }}
       kernel: ${{ steps.parse.outputs.kernel }}
       expire_date: ${{ steps.parse.outputs.expire_date }}
+      expire_days: ${{ steps.parse.outputs.expire_days }}
       build_id: ${{ steps.parse.outputs.build_id }}
       iso_file: ${{ steps.parse.outputs.iso_file }}
 
@@ -112,21 +113,13 @@ jobs:
           # ISO 文件名
           iso_file = f"openos-{iso_name}-{arch}-{kernel_key}-{build_id}.iso"
 
-          # 输出
-          print(f"iso_name={iso_name}")
-          print(f"arch={arch}")
-          print(f"kernel={kernel_key}")
-          print(f"expire_date={expire}")
-          print(f"build_id={build_id}")
-          print(f"iso_file={iso_file}")
-          print(f"components={components}")
-
           # 写入 GITHUB_OUTPUT
           with open(os.environ.get('GITHUB_OUTPUT', ''), 'a') as f:
               f.write(f"iso_name={iso_name}\n")
               f.write(f"arch={arch}\n")
               f.write(f"kernel={kernel_key}\n")
               f.write(f"expire_date={expire}\n")
+              f.write(f"expire_days={expire_days}\n")
               f.write(f"build_id={build_id}\n")
               f.write(f"iso_file={iso_file}\n")
               f.write(f"components={components}\n")
@@ -214,51 +207,13 @@ GRUBEOF
           ls -lah "$IMAGE_DIR/$ISO_FILE"
           echo "ISO 构建完成: $IMAGE_DIR/$ISO_FILE"
 
-      - name: 上传 ISO 到存储仓库
-        if: env.ISO_TOKEN != ''
-        env:
-          GH_TOKEN: ${{ secrets.OPENOS_ISO_TOKEN }}
-        run: |
-          ARCH=${{ steps.parse.outputs.arch }}
-          KERNEL=${{ steps.parse.outputs.kernel }}
-          BUILD_ID=${{ steps.parse.outputs.build_id }}
-          ISO_FILE=${{ steps.parse.outputs.iso_file }}
-          ISO_NAME=${{ steps.parse.outputs.iso_name }}
-          EXPIRE_DATE=${{ steps.parse.outputs.expire_date }}
-          IMAGE_DIR="OPENOS_CORE/BUILD_SYSTEM/out/images"
-          TAG="iso-${BUILD_ID}-${ARCH}-$(date +%Y%m%d)"
-
-          # 克隆存储仓库
-          git clone "https://x-access-token:${ISO_TOKEN}@github.com/${ISO_REPO}.git" \
-            /tmp/iso-repo --depth=1
-
-          # 使用 GitHub CLI 创建 Release
-          gh release create "$TAG" \
-            --repo "$ISO_REPO" \
-            --title "OPENOS ${ISO_NAME} - ${ARCH} (${KERNEL})" \
-            --notes "## OPENOS 自定义 ISO 构建
-
-- **镜像名称**: ${ISO_NAME}
-- **架构**: ${ARCH}
-- **内核**: ${KERNEL}
-- **构建 ID**: ${BUILD_ID}
-- **构建日期**: $(date -u +%Y-%m-%dT%H:%M:%SZ)
-- **过期日期**: ${EXPIRE_DATE}
-- **源 Issue**: [#${ISSUE_NUMBER}](https://github.com/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER})
-
-> 此镜像将在 ${EXPIRE_DATE} 后自动过期，届时将无法通过官方渠道下载。
-> 如需重新下载，请提交新的 Issue 触发构建。" \
-            "$IMAGE_DIR/$ISO_FILE"
-
-          echo "ISO 已上传至 Release: https://github.com/${ISO_REPO}/releases/tag/${TAG}"
-
-      - name: 上传 ISO 到 Actions Artifact（备选）
-        if: env.ISO_TOKEN == ''
+      - name: 上传 ISO 到构建产物（私有，自动过期）
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.parse.outputs.iso_file }}
           path: OPENOS_CORE/BUILD_SYSTEM/out/images/${{ steps.parse.outputs.iso_file }}
-          retention-days: 30
+          retention-days: ${{ steps.parse.outputs.expire_days }}
+          if-no-files-found: error
 
       - name: 在 Issue 中回复构建结果
         env:
@@ -269,16 +224,9 @@ GRUBEOF
           BUILD_ID=${{ steps.parse.outputs.build_id }}
           ISO_NAME=${{ steps.parse.outputs.iso_name }}
           EXPIRE_DATE=${{ steps.parse.outputs.expire_date }}
+          EXPIRE_DAYS=${{ steps.parse.outputs.expire_days }}
           ISO_FILE=${{ steps.parse.outputs.iso_file }}
-          TAG="iso-${BUILD_ID}-${ARCH}-$(date +%Y%m%d)"
-
-          if [ -n "$ISO_TOKEN" ]; then
-            DL_URL="https://github.com/${ISO_REPO}/releases/tag/${TAG}"
-            STORAGE_NOTE="镜像已上传至 GitHub Releases，可通过以下链接下载"
-          else
-            DL_URL="（未配置 ISO 存储仓库，产物仅保留在 Actions Artifact 中，请管理员配置 \`OPENOS_ISO_TOKEN\`）"
-            STORAGE_NOTE="未配置外部存储，镜像临时保存于 Actions Artifact"
-          fi
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
           gh issue comment "$ISSUE_NUMBER" \
             --repo "$GITHUB_REPOSITORY" \
@@ -292,9 +240,14 @@ GRUBEOF
 | 构建 ID | ${BUILD_ID} |
 | 过期日期 | ${EXPIRE_DATE} |
 
-**${STORAGE_NOTE}**: ${DL_URL}
+**镜像已保存至构建产物（Actions Artifact）**，仅仓库成员可下载。
 
-> 下载链接将在 ${EXPIRE_DATE} 后自动失效。
+下载方式：
+1. 打开此构建的运行页面：[${GITHUB_RUN_ID}](${RUN_URL})
+2. 在页面底部的 **Artifacts** 区域找到 \`${ISO_FILE}\`
+3. 点击即可下载
+
+> 此产物将在 ${EXPIRE_DAYS} 天后（${EXPIRE_DATE}）自动过期清除。
 > 如需重新构建，请提交新的 Issue。"
 
           # 移除构建中标签，添加构建完成标签
@@ -319,7 +272,7 @@ GRUBEOF
 
 很抱歉，ISO 构建过程中出现错误。请检查构建日志了解更多信息。
 
-[查看构建日志](https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})
+[查看构建日志](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})
 
 可能的原因：
 - 某个组件当前不可用（binpkg 缺失）
@@ -348,7 +301,7 @@ GRUBEOF
 | 架构 | ${ARCH} |
 | 内核 | ${KERNEL} |
 | 构建 ID | ${BUILD_ID} |
-| 源 Issue | [#${ISSUE_NUMBER}](https://github.com/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}) |
+| 源 Issue | [#${ISSUE_NUMBER}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}) |
 | 构建日志 | [查看](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) |
 
 ### 失败原因
