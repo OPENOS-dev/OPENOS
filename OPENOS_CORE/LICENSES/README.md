@@ -7,7 +7,8 @@
 ```
 LICENSES/
 ├── README.md                 # 本索引
-├── OPENOS-LICENSE.md         # 自研组件许可说明 (GPL-2.0-only)
+├── OPL.txt                   # OPENOS-PROJECT-LICENSE (OPL) v1.2 全文
+├── OPENOS-LICENSE.md         # 自研组件许可说明 (OPL-only)
 └── components/<组件>/        # 各上游组件许可副本
     ├── apt/   (COPYING, COPYING.GPL)
     ├── bash/  (LICENSE)
@@ -23,7 +24,7 @@ LICENSES/
 ## 自研组件
 
 OPENOS 自研代码（内核模块、OPENUI、app、服务、库、工具、构建体系、文档）
-统一 GPL-2.0-only，各组件目录内含 `COPYING`，详见 `OPENOS-LICENSE.md`。
+统一 OPL (OPENOS-PROJECT-LICENSE) v1.2，详见 `OPL.txt` 与 `OPENOS-LICENSE.md`。
 
 ## 上游组件
 

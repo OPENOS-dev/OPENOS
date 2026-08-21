@@ -1,17 +1,16 @@
 # OPENOS 自研组件许可说明
 
-OPENOS 自研代码（非上游组件）统一采用 **GPL-2.0-only**（与 Linux 内核一致，
-因为包含内核模块 `security/openos/`）。
+OPENOS 自研代码（非上游组件）统一采用 **OPL-only**。
 
 ## 覆盖范围
 
-以下为 OPENOS 自研/适配代码，以 GPL-2.0-only 授权：
+以下为 OPENOS 自研/适配代码，以 OPL-only 授权：
 
 | 组件 | 目录 |
 |---|---|
 | OPENOS Security（内核模块） | `src/kernel/*/security/openos/` |
 | OPENUI 桌面环境 | `src/OPENUI-desktop/` |
-| GUI App | `src/openos-{settings,oak,opt,vmapp,calendar,run,welcome}/` |
+| GUI App | `src/openos-{settings,oak,opt,calendar,run,welcome}/` |
 | 系统服务 | `src/openos-{securityd,settingsd}/` |
 | 库 | `src/lib{ oak,vmapp,openrsa }/` |
 | 工具 | `src/{opt,oakctl,openos-oak-seal}/` |
@@ -37,6 +36,7 @@ OPENOS 自研代码（非上游组件）统一采用 **GPL-2.0-only**（与 Linu
 
 ## 说明
 
+- OPENOS 自研组件统一采用 **OPL (OPENOS-PROJECT-LICENSE) v1.2**，全文见 `LICENSES/OPL.txt`。
 - OPENOS 基于 Arch Linux 打包元数据树（各组件 `LICENSE` 文件为
   "Copyright Arch Linux Contributors"，BSD-2-Clause 风格，见副本）。
 - 完整许可文本见 `LICENSES/components/*/`。

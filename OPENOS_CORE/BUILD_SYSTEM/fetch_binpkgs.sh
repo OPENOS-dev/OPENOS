@@ -26,7 +26,7 @@ BINPKG_DIR="$OUT_DIR/binpkg-fetch"
 COMPONENTS="kernel glibc bash coreutils util-linux pacman systemd gcc apt \
   liboak libopenrsa libvmapp oakctl openos-oak-seal openos-uname \
   openos-securityd openos-settingsd openos-settings openos-calendar \
-  openos-welcome openos-vmapp openos-run openos-oak opt OPENUI-desktop linux"
+  openos-welcome openos-run openos-oak opt OPENUI-desktop linux"
 
 main() {
   local arch="" kname="${OPENOS_KERNEL_DEFAULT}"

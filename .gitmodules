@@ -28,9 +28,6 @@
 [submodule "OPENOS_CORE/src/openos-welcome"]
 	path = OPENOS_CORE/src/openos-welcome
 	url = https://github.com/OPENOS-dev/OPENOS-welcome.git
-[submodule "OPENOS_CORE/src/openos-vmapp"]
-	path = OPENOS_CORE/src/openos-vmapp
-	url = https://github.com/OPENOS-dev/OPENOS-vmapp.git
 [submodule "OPENOS_CORE/src/openos-settingsd"]
 	path = OPENOS_CORE/src/openos-settingsd
 	url = https://github.com/OPENOS-dev/OPENOS-settingsd.git
