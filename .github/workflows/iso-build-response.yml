@@ -58,13 +58,13 @@ jobs:
 
             如果您后续需要新的构建，欢迎随时提交新的 ISO 构建请求。
             If you need a new build in the future, feel free to submit a new ISO build request."
-                      gh issue close "$ISSUE_NUMBER" \
-                        --repo "$GITHUB_REPOSITORY" \
-                        --comment "根据用户确认关闭 / Closed per user confirmation" || true
-                      gh issue edit "$ISSUE_NUMBER" \
-                        --repo "$GITHUB_REPOSITORY" \
-                        --remove-label "iso-built" \
-                        --add-label "iso-closed" || true
+          gh issue close "$ISSUE_NUMBER" \
+            -repo "$GITHUB_REPOSITORY" \
+            --comment "根据用户确认关闭 / Closed per user confirmation" || true
+          gh issue edit "$ISSUE_NUMBER" \
+            --repo "$GITHUB_REPOSITORY" \
+            --remove-label "iso-built" \
+            --add-label "iso-closed" || true
 
       - name: 用户不满意 - 询问具体问题 / User not satisfied - ask for details
         if: steps.parse.outputs.action == 'ask'
