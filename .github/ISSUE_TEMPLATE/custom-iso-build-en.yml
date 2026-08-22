@@ -1,5 +1,5 @@
 name: Custom ISO Build Request
-description: Submit a custom OPENOS ISO image build request. The system will automatically build and provide a download link.
+description: Submit a custom OPENOS ISO image build request
 title: "[ISO-BUILD] "
 labels: [custom-iso-build]
 body:
