@@ -92,7 +92,7 @@ body:
     id: expire-days
     attributes:
       label: Download Expiry (Days)
-      description: How many days the download link remains valid (default: 30, max: 90)
+      description: "How many days the download link remains valid (default: 30, max: 90)"
       placeholder: "30"
     validations:
       required: false
