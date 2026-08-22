@@ -320,20 +320,17 @@ jobs:
           mkdir -p "$ISO_DIR"
           cp "$IMAGE_DIR/$ISO_FILE" "$ISO_DIR/"
 
-          cat > "$ISO_DIR/META.json" <<METAEOF
-          {
-            "build_id": "${BUILD_ID}",
-            "iso_name": "${ISO_NAME}",
-            "arch": "${ARCH}",
-            "kernel": "${{ steps.parse.outputs.kernel }}",
-            "comp_set": "${{ steps.parse.outputs.comp_set }}",
-            "expire_date": "${EXPIRE_DATE}",
-            "source_issue": ${{ github.event.issue.number }},
-            "source_repo": "${GITHUB_REPOSITORY}",
-            "build_run": "${GITHUB_RUN_ID}",
-            "created_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          }
-METAEOF
+          printf '{\n  "build_id": "%s",\n  "iso_name": "%s",\n  "arch": "%s",\n  "kernel": "%s",\n  "comp_set": "%s",\n  "expire_date": "%s",\n  "source_issue": %s,\n  "source_repo": "%s",\n  "build_run": "%s",\n  "created_at": "%s"\n}\n' \
+            "${BUILD_ID}" \
+            "${ISO_NAME}" \
+            "${ARCH}" \
+            "${{ steps.parse.outputs.kernel }}" \
+            "${{ steps.parse.outputs.comp_set }}" \
+            "${EXPIRE_DATE}" \
+            "${{ github.event.issue.number }}" \
+            "${GITHUB_REPOSITORY}" \
+            "${GITHUB_RUN_ID}" \
+            "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$ISO_DIR/META.json"
 
           git config user.name "OPENOS CI"
           git config user.email "ci@openos.dev"
