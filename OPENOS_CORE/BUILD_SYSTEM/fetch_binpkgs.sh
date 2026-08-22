@@ -1,4 +1,16 @@
 #!/usr/bin/env bash
+# Copyright (C) 2026 OPENOS-dev
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the OPENOS-PROJECT-LICENSE (OPL) v1.2.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# OPL for more details.
+#
+# You should have received a copy of the OPL along with this program.
+# If not, see <https://github.com/OPENOS-dev/OPL>.
+#
 # OPENOS 构建体系 — 从共享 binpkg 仓库拉取各组件最新构建产物
 # 主系统不再本地构建组件, 而是获取各子模块 CI 已构建好的 .pkg.tar.zst
 #

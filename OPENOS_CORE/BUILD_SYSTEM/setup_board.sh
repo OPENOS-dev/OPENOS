@@ -1,4 +1,16 @@
 #!/usr/bin/env bash
+# Copyright (C) 2026 OPENOS-dev
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the OPENOS-PROJECT-LICENSE (OPL) v1.2.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# OPL for more details.
+#
+# You should have received a copy of the OPL along with this program.
+# If not, see <https://github.com/OPENOS-dev/OPL>.
+#
 # OPENOS 构建体系 — setup_board (Board 初始化)
 # 借鉴 Chromium OS `setup_board --board=...`: 为每个架构建立
 #   1) sysroot 目录骨架  2) 内核 UAPI 头 (交叉编译 glibc 需要)  3) 工具链探测

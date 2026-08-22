@@ -1,4 +1,16 @@
 #!/usr/bin/env bash
+# Copyright (C) 2026 OPENOS-dev
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the OPENOS-PROJECT-LICENSE (OPL) v1.2.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# OPL for more details.
+#
+# You should have received a copy of the OPL along with this program.
+# If not, see <https://github.com/OPENOS-dev/OPL>.
+#
 # OPENOS 构建体系 — 公共函数库 (日志/错误/幂等标记/阶段包装)
 # 借鉴 Chromium OS cros_sdk/Portage: 每组件按 ebuild 阶段执行并打标记, 幂等可重入。
 

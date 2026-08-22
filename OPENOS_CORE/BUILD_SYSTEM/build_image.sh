@@ -1,4 +1,16 @@
 #!/usr/bin/env bash
+# Copyright (C) 2026 OPENOS-dev
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the OPENOS-PROJECT-LICENSE (OPL) v1.2.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# OPL for more details.
+#
+# You should have received a copy of the OPL along with this program.
+# If not, see <https://github.com/OPENOS-dev/OPL>.
+#
 # OPENOS 构建体系 — 镜像组装 (借鉴 Chromium OS build_image)
 # 将 sysroot 组件产物组装为可启动的 rootfs 镜像 (tar 格式), 可按架构/内核分层出多套。
 #

@@ -1,4 +1,16 @@
 #!/usr/bin/env bash
+# Copyright (C) 2026 OPENOS-dev
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the OPENOS-PROJECT-LICENSE (OPL) v1.2.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# OPL for more details.
+#
+# You should have received a copy of the OPL along with this program.
+# If not, see <https://github.com/OPENOS-dev/OPL>.
+#
 # OPENOS 构建体系 — 组件构建器 (核心)
 # 借鉴 Chromium OS Portage/ebuild 的阶段模型:
 #   unpack -> prepare(打补丁) -> configure -> compile -> install
