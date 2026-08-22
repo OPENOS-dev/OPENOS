@@ -80,13 +80,42 @@ You will be notified here once the build is complete." || true
               m = re.search(pattern, text, re.MULTILINE | re.DOTALL)
               return m.group(1).strip() if m else default
 
-          iso_name  = get_field(r'### 镜像名称\s*\n\s*([^\n]+)', body, 'custom')
-          arch      = get_field(r'### 目标架构\s*\n\s*([^\n]+)', body, 'x86-64')
-          kernel    = get_field(r'### 内核分层\s*\n\s*([^\n]+)', body, 'base')
-          comp_set  = get_field(r'### 组件集合\s*\n\s*([^\n]+)', body, '基础包')
-          custom_raw = get_field(r'### 自定义额外包列表[（(]仅选择"自定义"时填写[）)]\s*\n\s*([^#]*)', body, '')
-          extra_raw = get_field(r'### 额外追加包列表[（(]可选，适用于所有模式[）)]\s*\n\s*([^#]*)', body, '')
-          expire_days = get_field(r'### 下载过期时间[（(]天[）)]\s*\n\s*([^\n]+)', body, '30')
+          def get_field_bilingual(zh_pattern, en_pattern, text, default=''):
+              # 先尝试中文匹配，再尝试英文匹配
+              m = re.search(zh_pattern, text, re.MULTILINE | re.DOTALL)
+              if m:
+                  return m.group(1).strip()
+              m = re.search(en_pattern, text, re.MULTILINE | re.DOTALL)
+              return m.group(1).strip() if m else default
+
+          iso_name  = get_field_bilingual(
+              r'### 镜像名称\s*\n\s*([^\n]+)',
+              r'### Image Name\s*\n\s*([^\n]+)',
+              body, 'custom')
+          arch      = get_field_bilingual(
+              r'### 目标架构\s*\n\s*([^\n]+)',
+              r'### Target Architecture\s*\n\s*([^\n]+)',
+              body, 'x86-64')
+          kernel    = get_field_bilingual(
+              r'### 内核分层\s*\n\s*([^\n]+)',
+              r'### Kernel Tier\s*\n\s*([^\n]+)',
+              body, 'base')
+          comp_set  = get_field_bilingual(
+              r'### 组件集合\s*\n\s*([^\n]+)',
+              r'### Component Set\s*\n\s*([^\n]+)',
+              body, '基础包')
+          custom_raw = get_field_bilingual(
+              r'### 自定义额外包列表[（(]仅选择"自定义"时填写[）)]\s*\n\s*([^#]*)',
+              r'### Custom Package List \(Custom Only\)\s*\n\s*([^#]*)',
+              body, '')
+          extra_raw = get_field_bilingual(
+              r'### 额外追加包列表[（(]可选，适用于所有模式[）)]\s*\n\s*([^#]*)',
+              r'### Extra Packages \(Optional, All Modes\)\s*\n\s*([^#]*)',
+              body, '')
+          expire_days = get_field_bilingual(
+              r'### 下载过期时间[（(]天[）)]\s*\n\s*([^\n]+)',
+              r'### Download Expiry \(Days\)\s*\n\s*([^\n]+)',
+              body, '30')
 
           iso_name = re.sub(r'[^a-zA-Z0-9_-]', '_', iso_name)[:40]
           expire_days = re.sub(r'[^0-9]', '', expire_days)
@@ -114,14 +143,14 @@ You will be notified here once the build is complete." || true
           custom_pkgs = parse_pkg_list(custom_raw)
           extra_pkgs  = parse_pkg_list(extra_raw)
 
-          comp_key = comp_set.split()[0]  # 基础包 / 普通包 / 完整包 / 自定义
-          if comp_key == '基础包':
+          comp_key = comp_set.split()[0]  # 基础包 / Basic / 普通包 / Regular / 完整包 / Full / 自定义 / Custom
+          if comp_key in ('基础包', 'Basic'):
               all_pkgs = extra_pkgs
-          elif comp_key == '普通包':
+          elif comp_key in ('普通包', 'Regular'):
               all_pkgs = parse_pkg_list(BASE_APPS) + extra_pkgs
-          elif comp_key == '完整包':
+          elif comp_key in ('完整包', 'Full'):
               all_pkgs = parse_pkg_list(BASE_APPS) + parse_pkg_list(DEV_TOOLS) + extra_pkgs
-          elif comp_key == '自定义':
+          elif comp_key in ('自定义', 'Custom'):
               all_pkgs = custom_pkgs + extra_pkgs
           else:
               all_pkgs = extra_pkgs
