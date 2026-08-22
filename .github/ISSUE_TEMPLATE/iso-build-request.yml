@@ -1,0 +1,107 @@
+name: ISO Build Request
+description: Submit a custom ISO image build request
+title: "[ISO-BUILD] "
+labels: [iso-build]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## OPENOS Custom ISO Build
+
+        After submitting this form, the system will automatically build
+        the OPENOS ISO image you specify. You will receive a download link
+        and expiration date in this issue once the build is complete.
+
+  - type: input
+    id: iso-name
+    attributes:
+      label: Image Name
+      description: A short identifier for this build (alphanumeric and hyphens only)
+      placeholder: "my-custom-build"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: arch
+    attributes:
+      label: Target Architecture
+      description: Select the target architecture
+      options:
+        - x86-64
+        - x86
+        - arm64
+        - arm32
+        - loong64
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kernel
+    attributes:
+      label: Kernel Tier
+      description: Select the kernel version
+      options:
+        - base (Linux 6.12 LTS)
+        - base7 (Linux 7.1)
+        - preview (Linux 7.2-rc)
+        - classic (Linux 5.15 LTS)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component-set
+    attributes:
+      label: Component Set
+      description: Select the software scope (system base packages are always included and cannot be removed)
+      options:
+        - Basic (System Core + Pacman)
+        - Regular (Basic + Daily Apps)
+        - Full (Regular + Dev Tools)
+        - Custom (Advanced Users)
+    validations:
+      required: true
+
+  - type: textarea
+    id: custom-packages
+    attributes:
+      label: Custom Package List (Custom Only)
+      description: When "Custom" is selected above, list all additional Pacman packages to install, one per line
+      placeholder: |
+        blender
+        libreoffice-fresh
+        code
+        qemu
+        nodejs
+        docker
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra-packages
+    attributes:
+      label: Extra Packages (Optional, All Modes)
+      description: Additional Pacman packages on top of the selected component set, one per line. Dependencies are handled automatically.
+      placeholder: |
+        neofetch
+        htop
+        git
+    validations:
+      required: false
+
+  - type: input
+    id: expire-days
+    attributes:
+      label: Download Expiry (Days)
+      description: How many days the download link remains valid (default: 30, max: 90)
+      placeholder: "30"
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Build Notes (Optional)
+      description: Any additional notes or comments
+      placeholder: "e.g. For testing XYZ feature..."
+    validations:
+      required: false
