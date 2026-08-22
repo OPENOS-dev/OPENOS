@@ -54,53 +54,38 @@ jobs:
           gh issue comment "$ISSUE_NUMBER" \
             --repo "$GITHUB_REPOSITORY" \
             --body "感谢您的确认！此 Issue 即将关闭。
-Thank you for your confirmation! This issue will be closed.
+            Thank you for your confirmation! This issue will be closed.
 
-如果您后续需要新的构建，欢迎随时提交新的 ISO 构建请求。
-If you need a new build in the future, feel free to submit a new ISO build request."
-          gh issue close "$ISSUE_NUMBER" \
-            --repo "$GITHUB_REPOSITORY" \
-            --comment "根据用户确认关闭 / Closed per user confirmation" || true
-          gh issue edit "$ISSUE_NUMBER" \
-            --repo "$GITHUB_REPOSITORY" \
-            --remove-label "iso-built" \
-            --add-label "iso-closed" || true
+            如果您后续需要新的构建，欢迎随时提交新的 ISO 构建请求。
+            If you need a new build in the future, feel free to submit a new ISO build request."
+                      gh issue close "$ISSUE_NUMBER" \
+                        --repo "$GITHUB_REPOSITORY" \
+                        --comment "根据用户确认关闭 / Closed per user confirmation" || true
+                      gh issue edit "$ISSUE_NUMBER" \
+                        --repo "$GITHUB_REPOSITORY" \
+                        --remove-label "iso-built" \
+                        --add-label "iso-closed" || true
 
       - name: 用户不满意 - 询问具体问题 / User not satisfied - ask for details
         if: steps.parse.outputs.action == 'ask'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          BODY=$(printf "## 收到您的反馈 / Feedback Received\n\n很抱歉镜像未能满足您的需求。请告诉我们具体遇到了什么问题？\nSorry the image didn't meet your needs. Please tell us what went wrong.\n\n例如 / For example：\n- 镜像启动失败 / Image fails to boot\n- 缺少某个软件包 / Missing a package\n- 某个功能无法正常使用 / A feature doesn't work\n- 其他问题 / Other issues\n\n维护者会尽快查看并协助您。\nMaintainers will review and assist you as soon as possible.\n\n---\n\n如果您想重新提交构建请求，请点击 [新建 ISO 构建请求 / New ISO Build Request](${{ github.server_url }}/${{ github.repository }}/issues/new?template=custom-iso-build.yml)。")
           gh issue edit "$ISSUE_NUMBER" \
             --repo "$GITHUB_REPOSITORY" \
             --remove-label "iso-built" \
             --add-label "iso-needs-fix" || true
           gh issue comment "$ISSUE_NUMBER" \
             --repo "$GITHUB_REPOSITORY" \
-            --body "## 收到您的反馈 / Feedback Received
-
-很抱歉镜像未能满足您的需求。请告诉我们具体遇到了什么问题？
-Sorry the image didn't meet your needs. Please tell us what went wrong.
-
-例如 / For example：
-- 镜像启动失败 / Image fails to boot
-- 缺少某个软件包 / Missing a package
-- 某个功能无法正常使用 / A feature doesn't work
-- 其他问题 / Other issues
-
-维护者会尽快查看并协助您。
-Maintainers will review and assist you as soon as possible.
-
----
-
-如果您想重新提交构建请求，请点击 [新建 ISO 构建请求 / New ISO Build Request](${{ github.server_url }}/${{ github.repository }}/issues/new?template=custom-iso-build.yml)。" || true
+            --body "$BODY" || true
 
       - name: 无法识别的回复 - 提示用户 / Unknown reply - prompt user
         if: steps.parse.outputs.action == 'unknown'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          BODY=$'没有看懂您的回复，请回复 **是** 来关闭此 Issue，或回复 **否** 告诉我们有什么问题。\nSorry, I didn'\''t understand that. Please reply **yes** to close this issue, or **no** to tell us what'\''s wrong.'
           gh issue comment "$ISSUE_NUMBER" \
             --repo "$GITHUB_REPOSITORY" \
-            --body "没有看懂您的回复，请回复 **是** 来关闭此 Issue，或回复 **否** 告诉我们有什么问题。
-Sorry, I didn't understand that. Please reply **yes** to close this issue, or **no** to tell us what's wrong." || true
+            --body "$BODY" || true
