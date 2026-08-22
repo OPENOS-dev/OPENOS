@@ -1,0 +1,110 @@
+name: 自定义 ISO 构建请求 / Custom ISO Build Request
+description: 提交自定义 OPENOS ISO 镜像构建请求，系统将自动构建并提供下载链接 / Submit a custom OPENOS ISO image build request
+title: "[ISO-BUILD] "
+labels: [custom-iso-build]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## OPENOS 自定义 ISO 构建 / Custom ISO Build
+
+        **中文：** 提交此表单后，系统将自动构建您指定的 OPENOS ISO 镜像，
+        构建完成后您将在此 Issue 中收到下载链接及过期时间。
+
+        **English:** After submitting this form, the system will automatically build
+        the OPENOS ISO image you specify. You will receive a download link and
+        expiration date in this issue once the build is complete.
+
+  - type: input
+    id: iso-name
+    attributes:
+      label: 镜像名称 / Image Name
+      description: 为此构建版本取一个简短的标识名称（仅允许字母、数字、连字符） / A short identifier for this build (alphanumeric and hyphens only)
+      placeholder: "my-custom-build"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: arch
+    attributes:
+      label: 目标架构 / Target Architecture
+      description: 选择构建目标架构 / Select the target architecture
+      options:
+        - x86-64
+        - x86
+        - arm64
+        - arm32
+        - loong64
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kernel
+    attributes:
+      label: 内核分层 / Kernel Tier
+      description: 选择内核版本 / Select the kernel version
+      options:
+        - base (Linux 6.12 LTS)
+        - base7 (Linux 7.1)
+        - preview (Linux 7.2-rc)
+        - classic (Linux 5.15 LTS)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component-set
+    attributes:
+      label: 组件集合 / Component Set
+      description: 选择要包含的软件范围（系统基础包始终包含，不可去除） / Select the software scope (system base packages are always included and cannot be removed)
+      options:
+        - 基础包 (Basic) - 系统核心 + pacman
+        - 普通包 (Regular) - 基础包 + 日常软件
+        - 完整包 (Full) - 普通包 + 开发工具
+        - 自定义 (Custom) - 专业用户手动指定
+    validations:
+      required: true
+
+  - type: textarea
+    id: custom-packages
+    attributes:
+      label: 自定义额外包列表（仅选择"自定义"时填写） / Custom Package List (Custom Only)
+      description: 当上方选择"自定义"时，在此列出所有需要额外安装的 Pacman 包，每行一个 / When "Custom" is selected above, list all additional Pacman packages to install, one per line
+      placeholder: |
+        blender
+        libreoffice-fresh
+        code
+        qemu
+        nodejs
+        docker
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra-packages
+    attributes:
+      label: 额外追加包列表（可选，适用于所有模式） / Extra Packages (Optional, All Modes)
+      description: 在已选组件集合之上额外追加的 Pacman 包，每行一个。系统会自动处理依赖关系。 / Additional Pacman packages on top of the selected component set, one per line. Dependencies are handled automatically.
+      placeholder: |
+        neofetch
+        htop
+        git
+    validations:
+      required: false
+
+  - type: input
+    id: expire-days
+    attributes:
+      label: 下载过期时间（天） / Download Expiry (Days)
+      description: "镜像下载链接的有效天数，超过此期限后链接将自动失效（默认 30 天，最长 90 天） / How many days the download link remains valid (default: 30, max: 90)"
+      placeholder: "30"
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 构建备注（可选） / Build Notes (Optional)
+      description: 任何其他说明或备注 / Any additional notes or comments
+      placeholder: "例如：用于测试某某功能... / e.g. For testing XYZ feature..."
+    validations:
+      required: false
