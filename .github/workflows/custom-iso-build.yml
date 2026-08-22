@@ -336,10 +336,34 @@ jobs:
               ;;
             loong64)
               GRUB_TARGET="loong64-efi"
+              # Debian sid 提供 loong64 GRUB 包，Ubuntu 暂不支持
+              GRUB_PKG_URL="http://ftp.debian.org/debian/pool/main/g/grub2/grub-efi-loong64-bin_2.14-3_loong64.deb"
+              GRUB_PKG_OUT="/tmp/grub-loong64.deb"
+              GRUB_MOD_DIR="/usr/lib/grub/loong64-efi"
+              if [ ! -d "$GRUB_MOD_DIR" ]; then
+                echo "从 Debian sid 下载 grub-efi-loong64-bin..."
+                wget -q "$GRUB_PKG_URL" -O "$GRUB_PKG_OUT" || {
+                  echo "::warning::下载 loong64 GRUB 包失败，将使用 xorriso 创建无引导 ISO"
+                  GRUB_TARGET=""
+                }
+                if [ -n "$GRUB_TARGET" ] && [ -f "$GRUB_PKG_OUT" ]; then
+                  mkdir -p /tmp/grub-extract
+                  dpkg-deb -x "$GRUB_PKG_OUT" /tmp/grub-extract
+                  if [ -d "/tmp/grub-extract/usr/lib/grub/loong64-efi" ]; then
+                    sudo mkdir -p "$GRUB_MOD_DIR"
+                    sudo cp -r /tmp/grub-extract/usr/lib/grub/loong64-efi/* "$GRUB_MOD_DIR/"
+                    echo "loong64 GRUB 模块已安装到 $GRUB_MOD_DIR"
+                  else
+                    echo "::warning::未找到 loong64 GRUB 模块，将使用 xorriso 创建无引导 ISO"
+                    GRUB_TARGET=""
+                  fi
+                  rm -rf /tmp/grub-extract "$GRUB_PKG_OUT"
+                fi
+              fi
               ;;
           esac
 
-          if command -v grub-mkrescue &>/dev/null; then
+          if command -v grub-mkrescue &>/dev/null && [ -n "$GRUB_TARGET" ]; then
             sudo grub-mkrescue --target="$GRUB_TARGET" -o "$IMAGE_DIR/$ISO_FILE" "$ISO_DIR"
           else
             xorriso -as mkisofs -iso-level 3 -full-iso9660-filenames \
