@@ -416,7 +416,11 @@ jobs:
           git config user.email "ci@openos.dev"
           git add -A
           git commit -m "iso: ${ISO_NAME} ${ARCH} (${BUILD_ID})" || echo "no changes"
-          git push -q origin main
+          for i in 1 2 3 4 5; do
+            if git pull --rebase origin main && git push -q origin main; then break; fi
+            echo "推送冲突，重试 $i/5..."
+            sleep $((RANDOM % 5 + 3))
+          done
           echo "ISO 已推送到共享仓库"
           echo "push_failed=false" >> "$GITHUB_ENV"
 

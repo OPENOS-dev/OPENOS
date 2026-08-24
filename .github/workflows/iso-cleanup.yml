@@ -79,5 +79,9 @@ jobs:
           git config user.email "ci@openos.dev"
           git add -A
           git commit -m "cleanup: 删除 ${{ env.expired_count }} 个过期 ISO"
-          git push -q origin main
+          for i in 1 2 3 4 5; do
+            if git pull --rebase origin main && git push -q origin main; then break; fi
+            echo "推送冲突，重试 $i/5..."
+            sleep $((RANDOM % 5 + 3))
+          done
           echo "已清理 ${{ env.expired_count }} 个过期 ISO"
