@@ -35,10 +35,11 @@ BINPKG_URL="https://github.com/OPENOS-dev/OPENOS-BUILD-BINPKG.git"
 BINPKG_DIR="$OUT_DIR/binpkg-fetch"
 
 # 全部基础组件 (kernel 特殊处理; gcc/systemd 暂为预留空包仍拉取)
+# OPENUI-desktop 暂时关停, 桌面改用 KDE Plasma (由 install_kde.sh 安装)
 COMPONENTS="kernel glibc bash coreutils util-linux pacman systemd gcc \
   liboak libopenrsa oakctl openos-oak-seal openos-uname \
   openos-settingsd openos-settings openos-calendar \
-  openos-welcome openos-run openos-oak opt OPENUI-desktop linux"
+  openos-welcome openos-run openos-oak opt linux"
 
 main() {
   local arch="" kname="${OPENOS_KERNEL_DEFAULT}"

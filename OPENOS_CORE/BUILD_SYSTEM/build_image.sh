@@ -17,6 +17,9 @@
 # 用法: build_image.sh --arch=<...> [--kernel=<base>] [--out=<name>]
 #   rootfs 布局:  /usr /bin /lib /etc /boot
 #   产出: $OUT_DIR/images/<arch>-<kname>-<name>.tar.zst
+#
+# 桌面环境: 当前使用 KDE Plasma (OPENUI-desktop 暂时关停)
+#   install_kde.sh 在 rootfs 组装阶段从宿主机 apt 安装 KDE 包
 
 set -euo pipefail
 BUILD_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -59,6 +62,9 @@ main() {
     printf 'root:x:0:\n' > '$stage_dir'/etc/group
     printf 'none /proc proc defaults 0 0\nnone /sys sysfs defaults 0 0\n' > '$stage_dir'/etc/fstab
   "
+
+  # 安装 KDE Plasma 桌面 (OPENUI-desktop 暂时关停)
+  "$BUILD_ROOT/install_kde.sh" --arch="$arch" --sysroot="$stage_dir"
 
   stage "image-tar" "打包镜像 ($arch-$kname)" bash -c "
     set -euo pipefail
