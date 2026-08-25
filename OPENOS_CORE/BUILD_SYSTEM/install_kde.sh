@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Copyright (C) 2026 OPENOS-dev
-# OPENOS 构建体系 — 从宿主机 apt 安装 KDE Plasma 到 sysroot
+# OPENOS 构建体系 -- 从宿主机 pacman 安装 KDE Plasma 到 sysroot
 #
 # 用法: install_kde.sh --arch=<...> [--sysroot=<path>]
 #   OPENUI-desktop 暂时关停, 桌面改用 KDE Plasma。
-#   从宿主机 apt 下载 .deb 包并解压到 sysroot,
-#   避免依赖 OPENUI-desktop 子模块构建。
+#   在 GitHub Actions 上通过 pacman 从 Arch Linux 仓库
+#   直接安装 KDE 到 sysroot, 自动解析依赖。
 #
-#   注意: 仅在 x86-64 原生构建时可用 (KDE 包来自宿主机架构)。
-#         交叉编译架构 (arm64/arm32/loong64) 需另行处理。
+#   注意: 仅在 x86-64 原生构建时可用 (Arch 包仅 x86-64)。
+#         交叉编译架构 (arm64/arm32/loong64) 暂不支持 KDE。
 
 set -euo pipefail
 BUILD_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -17,18 +17,16 @@ BUILD_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=common.sh
 . "$BUILD_ROOT/common.sh"
 
-# KDE Plasma 最小包集合
-KDE_PACKAGES="plasma-workspace plasma-desktop sddm kwin-wayland kwin-x11 \
-  konsole dolphin kate plasma-nm plasma-pa powerdevil \
-  systemsettings kde-config-sddm xdg-desktop-portal-kde \
-  breeze kde-style-breeze"
+# KDE Plasma 包 (plasma-meta 拉完整桌面, sddm 为显示管理器)
+KDE_PKGS="plasma-meta sddm sddm-kcm konsole dolphin kate \
+  plasma-nm plasma-pa powerdevil systemsettings \
+  breeze breeze-gtk kde-gtk-config"
 
-# 额外依赖 (确保完整桌面体验)
-KDE_EXTRA="libqt6svg6 qml6-module-qtquick-controls qml6-module-qtquick-layouts \
-  qml6-module-org-kde-kirigami2 qml6-module-org-kde-plasma-core \
-  qml6-module-org-kde-plasma-components qml6-module-org-kde-plasma-extras"
+# OPENOS 自行构建的包，告诉 pacman 不要覆盖
+OPENOS_BASE="glibc gcc-libs bash coreutils util-linux systemd systemd-libs \
+  pacman gcc"
 
-KDE_DEB_DIR=""
+PACMAN_CACHE=""
 
 main() {
   local arch="" sysroot=""
@@ -42,44 +40,113 @@ main() {
   [ -n "$arch" ] || die "用法: install_kde.sh --arch=<...>"
   [ -n "$sysroot" ] || sysroot="$OUT_DIR/sysroots/$arch"
 
-  # 仅 x86-64 原生构建支持从 apt 安装 KDE
   if [ "$arch" != "x86-64" ]; then
-    warn "[kde] 跳过 KDE 安装: $arch 不是原生 x86-64 (KDE 包来自宿主机 apt)"
+    warn "[kde] 跳过 KDE 安装: $arch 不是原生 x86-64 (Arch 包仅 x86-64)"
     warn "[kde] 该架构将不包含桌面环境, 仅含命令行系统"
     return 0
   fi
 
-  log "[kde] 安装 KDE Plasma 桌面到 sysroot ..."
-  KDE_DEB_DIR="$OUT_DIR/kde-debs"
-  rm -rf "$KDE_DEB_DIR"
-  mkdir -p "$KDE_DEB_DIR" "$sysroot"
+  log "[kde] 用 pacman 安装 KDE Plasma 桌面到 sysroot ..."
 
-  # 1. 下载所有 KDE 包及其依赖
-  log "[kde] 下载 KDE Plasma 包 ..."
-  cd "$KDE_DEB_DIR"
-  for pkg in $KDE_PACKAGES $KDE_EXTRA; do
-    apt-get download "$pkg" 2>/dev/null || warn "[kde] 跳过缺失包: $pkg"
-  done
+  PACMAN_CACHE="$OUT_DIR/pacman-cache"
+  mkdir -p "$PACMAN_CACHE" "$sysroot"/var/lib/pacman "$sysroot"/etc
 
-  local count
-  count=$(ls -1 *.deb 2>/dev/null | wc -l)
-  if [ "$count" -eq 0 ]; then
-    die "[kde] 未下载到任何 KDE 包"
+  # 1. 安装并初始化 pacman
+  setup_pacman
+
+  # 2. 安装 KDE Plasma 包
+  install_kde_packages
+
+  # 3. 配置系统
+  configure_system
+
+  info "[kde] KDE Plasma 安装完成: $arch"
+}
+
+setup_pacman() {
+  log "[kde] 安装 pacman 到宿主机 ..."
+  sudo apt-get update -qq
+  sudo apt-get install -y -qq pacman archlinux-keyring 2>/dev/null || true
+
+  # 如果 apt 没有 pacman, 尝试从 pacman-static 安装
+  if ! command -v pacman &>/dev/null; then
+    log "[kde] apt 无 pacman, 下载 pacman-static ..."
+    curl -fsSL -o /tmp/pacman-static \
+      "https://github.com/andrewgregory/pacman-static/releases/latest/download/pacman-static-x86_64.tar.gz" 2>/dev/null || true
+    if [ -f /tmp/pacman-static ]; then
+      tar xzf /tmp/pacman-static -C /usr/local/bin/ pacman-static 2>/dev/null || true
+    fi
   fi
-  info "[kde] 已下载 $count 个 .deb 包"
 
-  # 2. 解压所有 .deb 到 sysroot
-  log "[kde] 解压 KDE 包到 sysroot ..."
-  for deb in *.deb; do
-    dpkg-deb -x "$deb" "$sysroot" 2>/dev/null || true
+  # 初始化 pacman keyring
+  log "[kde] 初始化 pacman keyring ..."
+  sudo mkdir -p /etc/pacman.d
+  sudo pacman-key --init 2>/dev/null || true
+  sudo pacman-key --populate archlinux 2>/dev/null || true
+
+  # 配置镜像源
+  cat << 'MIRRORS' | sudo tee /etc/pacman.d/mirrorlist
+Server = https://mirrors.kernel.org/archlinux/$repo/os/$arch
+Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch
+MIRRORS
+
+  # 配置 pacman.conf (允许非 root 操作, 跳过签名检查加速 CI)
+  cat << 'PACCONF' | sudo tee /etc/pacman.conf
+[options]
+HoldPkg     = pacman glibc
+Architecture = auto
+SigLevel    = Never
+LocalFileSigLevel = Optional
+ParallelDownloads = 5
+
+[core]
+Include = /etc/pacman.d/mirrorlist
+
+[extra]
+Include = /etc/pacman.d/mirrorlist
+
+[community]
+Include = /etc/pacman.d/mirrorlist
+PACCONF
+
+  sudo mkdir -p /var/lib/pacman
+  sudo pacman -Sy --noconfirm 2>/dev/null || true
+  info "[kde] pacman 初始化完成"
+}
+
+install_kde_packages() {
+  log "[kde] 安装 KDE Plasma 包到 sysroot ..."
+
+  # 构建 --assume-installed 参数, 防止 pacman 覆盖 OPENOS 基包
+  local assume=""
+  for pkg in $OPENOS_BASE; do
+    assume="$assume --assume-installed=$pkg"
   done
 
-  # 3. 配置 SDDM 自动启动
-  log "[kde] 配置 SDDM 显示管理器 ..."
-  mkdir -p "$sysroot/etc/systemd/system/multi-user.target.wants"
-  mkdir -p "$sysroot/etc/systemd/system/display-manager.service.d"
+  # 用 pacman 安装到 sysroot (自动处理依赖树)
+  sudo pacman --root="$sysroot" \
+    --cachedir="$PACMAN_CACHE" \
+    --dbpath="$sysroot/var/lib/pacman" \
+    $assume \
+    -Syu --noconfirm --needed $KDE_PKGS 2>&1 | tail -20 || {
+    warn "[kde] pacman 安装部分包失败, 尝试逐个安装 ..."
+    for pkg in $KDE_PKGS; do
+      sudo pacman --root="$sysroot" \
+        --cachedir="$PACMAN_CACHE" \
+        --dbpath="$sysroot/var/lib/pacman" \
+        $assume \
+        -S --noconfirm --needed "$pkg" 2>/dev/null || warn "[kde] 跳过: $pkg"
+    done
+  }
 
-  # 如果 SDDM service 存在则启用
+  info "[kde] KDE 包安装完成"
+}
+
+configure_system() {
+  log "[kde] 配置系统 ..."
+
+  # SDDM 自启动
+  mkdir -p "$sysroot/etc/systemd/system/multi-user.target.wants"
   if [ -f "$sysroot/usr/lib/systemd/system/sddm.service" ]; then
     ln -sf /usr/lib/systemd/system/sddm.service \
       "$sysroot/etc/systemd/system/display-manager.service" 2>/dev/null || true
@@ -87,8 +154,7 @@ main() {
       "$sysroot/etc/systemd/system/multi-user.target.wants/sddm.service" 2>/dev/null || true
   fi
 
-  # 4. 创建默认用户 openos
-  log "[kde] 创建默认用户 ..."
+  # 默认用户 openos
   if ! grep -q '^openos:' "$sysroot/etc/passwd" 2>/dev/null; then
     echo 'openos:x:1000:1000:OPENOS User:/home/openos:/bin/bash' >> "$sysroot/etc/passwd"
   fi
@@ -100,7 +166,7 @@ main() {
   fi
   mkdir -p "$sysroot/home/openos"
 
-  # 5. SDDM 配置: 自动登录 openos 用户
+  # SDDM 自动登录
   mkdir -p "$sysroot/etc/sddm.conf.d"
   cat > "$sysroot/etc/sddm.conf.d/autologin.conf" << 'SDDMCFG'
 [Autologin]
@@ -111,15 +177,16 @@ Session=plasma.desktop
 Current=breeze
 SDDMCFG
 
-  # 6. 确保 dbus 自启动
+  # dbus 自启动
   if [ -f "$sysroot/usr/lib/systemd/system/dbus.service" ]; then
+    mkdir -p "$sysroot/etc/systemd/system/sockets.target.wants"
     ln -sf /usr/lib/systemd/system/dbus.service \
       "$sysroot/etc/systemd/system/multi-user.target.wants/dbus.service" 2>/dev/null || true
     ln -sf /usr/lib/systemd/system/dbus.socket \
       "$sysroot/etc/systemd/system/sockets.target.wants/dbus.socket" 2>/dev/null || true
   fi
 
-  info "[kde] KDE Plasma 安装完成: $arch"
+  info "[kde] 系统配置完成"
 }
 
 main "$@"
