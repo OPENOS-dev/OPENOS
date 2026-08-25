@@ -12,6 +12,8 @@
 
 set -euo pipefail
 BUILD_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# 必须在 source common.sh 前设置 OPENOS_ARCH (common.sh 依赖该变量)
+OPENOS_ARCH=""
 # shellcheck source=config.sh
 . "$BUILD_ROOT/config.sh"
 # shellcheck source=common.sh

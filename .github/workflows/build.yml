@@ -29,6 +29,7 @@ jobs:
 
     env:
       ARCH: ${{ matrix.arch }}
+      OPENOS_ARCH: ${{ matrix.arch }}
       KERNEL_TIER: ${{ inputs.kernel || 'base' }}
 
     steps:
